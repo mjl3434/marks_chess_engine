@@ -1,10 +1,11 @@
-#ifndef UCIStateMachine_H
-#define UCIStateMachine_H
+#pragma once
 
 #include <list>
+#include <optional>
 #include <string>
 #include <unordered_map>
-#include <optional>
+
+#include "ChessEngine.h"
 
 enum class UCIState {
     UCI,
@@ -30,15 +31,16 @@ class UCIStateMachine
   public:
 
     // Functions
+    UCIStateMachine(ChessEngine& engine) : chess_engine(engine) {}
     std::optional<UCIState> getCommand(const std::string& command);
-    void handleCommand(enum UCIState state, std::list<std::string> tokens);
+    bool handleCommand(enum UCIState state, std::list<std::string> tokens);
 
   private:
 
     // Functions
     void handleUci(std::list<std::string>& tokens);
     void handleDebug(std::list<std::string>& tokens);
-    void handleIsready(std::list<std::string>& tokens);
+    void handleIsReady(std::list<std::string>& tokens);
     void handleSetOption(std::list<std::string>& tokens);
     void handleRegister(std::list<std::string>& tokens);
     void handleUciNewGame(std::list<std::string>& tokens);
@@ -65,6 +67,7 @@ class UCIStateMachine
 
     std::string engine_id = "marks_chess_engine_version_1.0.0";
     bool debug_enabled = false;
-};
 
-#endif // UCIStateMachine_H
+    // References to other objects
+    ChessEngine& chess_engine;
+};
