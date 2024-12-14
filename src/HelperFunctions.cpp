@@ -13,7 +13,7 @@ void toLower(std::string& str)
     });
 }
 
-bool convertStringToInt(std::string& input, int* output)
+bool stringToInt(std::string& input, int& output)
 {
     int converted_value = 0;
 
@@ -29,6 +29,6 @@ bool convertStringToInt(std::string& input, int* output)
         return false; // If the number is out of range for an integer
     }
 
-    *output = converted_value;
+    output = converted_value;
     return true;
 }
