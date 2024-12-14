@@ -36,12 +36,19 @@ class Square
 class Move
 {
   public:
-    Move(std::string algebreic_notation);
+    Move(std::string algebraic_notation)
+        : algebraic(algebraic_notation),
+          piece(Piece::EMPTY),
+          source_rank(-1),
+          source_file(-1),
+          destination_rank(-1),
+          destination_file(-1) {}
+    std::string algebraic;
     Piece piece;
-    uint8_t source_rank; // (row)
-    uint8_t source_file; // (column)
-    uint8_t destination_rank; // (row)
-    uint8_t destination_file; // (column)
+    int8_t source_rank; // (row)
+    int8_t source_file; // (column)
+    int8_t destination_rank; // (row)
+    int8_t destination_file; // (column)
 };
 
 class Game
