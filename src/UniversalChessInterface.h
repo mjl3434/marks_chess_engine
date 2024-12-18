@@ -62,6 +62,11 @@ class UniversalChessInterface
             std::string& option_name, std::string& option_value);
     bool isValidPositionCommand(std::list<std::string>& tokens,
             std::string& fen, std::list<Move>& moves);
+    bool isValidGoCommand(std::list<std::string>& tokens,
+            std::list<Move> restrict_search, bool ponder, bool infinite,
+            int movetime, int wtime, int btime, int winc, int binc,
+            int movestogo, int depth, int nodes, int mate);
+    bool isValidNoArgCommand(std::list<std::string>& tokens);
 
     std::unordered_map<std::string, enum Keyword> valid_keywords = {
         { "uci",          Keyword::UCI },
