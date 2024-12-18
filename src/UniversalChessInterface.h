@@ -1,10 +1,13 @@
 #pragma once
 
+#include <functional>
+#include <map>
 #include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <map>
+
+#include "ChessEngine.h"
 
 using Command = std::function<void(ChessEngine&)>;
 
@@ -60,7 +63,7 @@ class UniversalChessInterface
     bool isValidPositionCommand(std::list<std::string>& tokens,
             std::string& fen, std::list<Move>& moves);
 
-    std::unordered_map<std::string, enum Keywords> valid_keywords = {
+    std::unordered_map<std::string, enum Keyword> valid_keywords = {
         { "uci",          Keyword::UCI },
         { "debug",        Keyword::DEBUG },
         { "on",           Keyword::ON },
