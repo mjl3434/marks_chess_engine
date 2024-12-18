@@ -304,7 +304,7 @@ UniversalChessInterface::getCommand(const std::string& input)
             // up multiple engine commands, later if necssary by queuing up the
             // lambdas.
             bool enabled;
-            if (isValidDebugCommand(tokens, &enabled)) {
+            if (isValidDebugCommand(tokens, enabled)) {
                 Command debug_command = [enabled](ChessEngine& engine) {
                     engine.setDebug(enabled);
                 };
@@ -455,7 +455,7 @@ UniversalChessInterface::isValidSetoptionCommand(const std::string& input,
 }
 
 bool
-UniversalChessInterface::(std::list<std::string>& tokens,
+UniversalChessInterface::isValidPositionCommand(std::list<std::string>& tokens,
         std::string& output_fen, std::list<Move>& output_moves)
 {
     // position [fen <fenstring> | startpos ]  moves <move1> .... <movei>
