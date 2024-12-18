@@ -33,6 +33,8 @@ class ChessEngine
     void ponderHit(void);
     void quit(void);
     void setUpBoardFromFen(const std::string&);
+    void playMove(const Move&);
+    bool isMoveLegal(const Move&);
 
   private:
     bool debug_enabled = false;

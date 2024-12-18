@@ -1,6 +1,7 @@
 #include "UniversalChessInterface.h"
 
 #include <iostream>
+#include <limits>
 #include <list>
 #include <map>
 #include <regex>
@@ -262,7 +263,6 @@ UniversalChessInterface::quitReceived(const std::string& input)
 }
 
 
-
 // Parse the UCI input string, and if it's valid create a command object which
 // contains all of the relevant data, parsed into useful fields
 std::optional<Command>
@@ -278,11 +278,7 @@ UniversalChessInterface::getCommand(const std::string& input)
     }
 
     // Get the first token fron the list
-    token = tokens.front();
-    tokens.pop_front();
-
-    // Ignore case
-    toLower(token);
+    token = popFrontLowercase(tokens);
 
     // Make sure it's a valid keyword
     auto it = valid_keywords.find(token);
@@ -359,6 +355,7 @@ UniversalChessInterface::getCommand(const std::string& input)
             break;
         */ 
         case Keyword::POSITION:
+        {
             std::string fen;
             std::list<Move> moves;
             if (isValidPositionCommand(tokens, fen, moves)) {
@@ -369,19 +366,42 @@ UniversalChessInterface::getCommand(const std::string& input)
 
             }
             break;
-        /*
+        }
         case Keyword::GO:
-            handleGo(tokens);
+        {
+            std::list<Move> restrict_search;
+            bool ponder, infinite;
+            int movetime, wtime, btime, winc, binc, movestogo, depth, nodes, mate;
+            if (isValidGoCommand(tokens, restrict_search, ponder, infinite,
+                    movetime, wtime, btime, winc, binc, movestogo, depth, nodes,
+                    mate)) {
+                Command go_command = [=](ChessEngine& engine) {
+                    engine.startCalculating(restrict_search, ponder, infinite,
+                            movetime, wtime, btime, winc, binc, movestogo,
+                            nodes, mate);
+                };
+                command_to_return.value() = go_command;
+            }
             break;
+        }
         case Keyword::STOP:
-            handleStop(tokens);
+        {
+            if (isValidNoArgCommand(tokens)) {
+                Command stop_command = [](ChessEngine& engine) {
+                    engine.stopCalculating();
+                };
+            }
             break;
+        }
         case Keyword::PONDERHIT:
-            handlePonderHit(tokens);
+            if (isValidNoArgCommand(tokens)) {
+                Command stop_command = [](ChessEngine& engine) {
+                    engine.ponderHit();
+                };
+            }
             break;
         default:
-            return false;
-        */
+            break;
     }
 
     return command_to_return;
@@ -412,6 +432,19 @@ UniversalChessInterface::isValidDebugCommand(std::list<std::string>& tokens, boo
         enabled = false;
     } else {
         // Unknown value, invalid command
+        return false;
+    }
+    return true;
+}
+
+/*
+ stop and ponderhit all have no arguments
+*/
+bool
+UniversalChessInterface::isValidNoArgCommand(std::list<std::string>& tokens)
+{
+    // Noting comes after the stop
+    if (tokens.size() != 0) {
         return false;
     }
     return true;
@@ -468,9 +501,7 @@ UniversalChessInterface::isValidPositionCommand(std::list<std::string>& tokens,
     const std::string startpos_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     // Get next token after "position"
-    std::string token = tokens.front();
-    tokens.pop_front();
-    toLower(token);
+    std::string token = popFrontLowercase(tokens);
 
     // Get the correct FEN string to return
     if (token == "startpos") {
@@ -507,17 +538,13 @@ UniversalChessInterface::isValidPositionCommand(std::list<std::string>& tokens,
     }
 
     // Extract the moves token
-    token = tokens.front();
-    tokens.pop_front();
-    toLower(token);
+    token = popFrontLowercase(tokens);
     if (token != "moves") {
         return false;
     }
 
     while (tokens.size() > 0) {
-        token = tokens.front();
-        tokens.pop_front();
-        toLower(token);
+        token = popFrontLowercase(tokens);
         if (!isValidAlgebraicNotation(token)) {
             return false;
         } else {
@@ -526,5 +553,126 @@ UniversalChessInterface::isValidPositionCommand(std::list<std::string>& tokens,
         }
     }
 
+    return true;
+}
+
+bool
+UniversalChessInterface::isValidGoCommand(std::list<std::string>& tokens,
+        std::list<Move> restrict_search, bool ponder, bool infinite,
+        int movetime, int wtime, int btime, int winc, int binc,
+        int movestogo, int depth, int nodes, int mate)
+{
+    // Initialize output arguments to default values, -1 for "not set"
+    ponder = false; infinite = false;
+    movetime = -1; wtime = -1; btime = -1; winc = -1; binc = -1;
+    movestogo = -1; depth = -1; nodes = -1; mate = -1;
+
+    while (tokens.size() > 0) {
+        std::string token = popFrontLowercase(tokens);
+        auto it = valid_keywords.find(token);
+        if (it == valid_keywords.end()) {
+            return false;
+        }
+
+        // Check after popping that there are additional arguments in the
+        // token list for commands that require them.
+        if (it->second != Keyword::PONDER &&
+            it->second != Keyword::INFINITE && 
+            tokens.size() == 0) {
+            return false;
+        }
+
+        switch (it->second) {
+            case Keyword::PONDER:
+                ponder = true;
+                break;
+            case Keyword::INFINITE:
+                infinite = true;
+                break;
+            case Keyword::WTIME:
+                token = popFrontLowercase(tokens);
+                if (!stringToInt(token, wtime)) {
+                    return false;
+                }
+                break;
+            case Keyword::BTIME:
+                token = popFrontLowercase(tokens);
+                if (!stringToInt(token, btime)) {
+                    return false;
+                }
+                break;
+            case Keyword::WINC:
+                token = popFrontLowercase(tokens);
+                if (!stringToInt(token, winc)) {
+                    return false;
+                }
+                break;
+            case Keyword::BINC:
+                token = popFrontLowercase(tokens);
+                if (!stringToInt(token, binc)) {
+                    return false;
+                }
+                break;
+            case Keyword::MOVESTOGO:
+                token = popFrontLowercase(tokens);
+                if (!stringToInt(token, movestogo)) {
+                    return false;
+                }
+                break;
+            case Keyword::DEPTH:
+                token = popFrontLowercase(tokens);
+                if (!stringToInt(token, depth)) {
+                    return false;
+                }
+                break;
+            case Keyword::NODES:
+                token = popFrontLowercase(tokens);
+                if (!stringToInt(token, nodes)) {
+                    return false;
+                }
+                break;
+            case Keyword::MATE:
+                token = popFrontLowercase(tokens);
+                if (!stringToInt(token, mate)) {
+                    return false;
+                }
+                break;
+            case Keyword::MOVETIME:
+                token = popFrontLowercase(tokens);
+                if (!stringToInt(token, movetime)) {
+                    return false;
+                }
+                break;
+            case Keyword::SEARCHMOVES:
+                // The logic here is a little complicated because we allow for
+                // the case where the UCI command is something like this:
+                // 
+                // go searchmoves e2e4 d2d4 infinite
+                // 
+                // So we my have to pop from the list of UCI strings, and if
+                // we determine it's a keyword and not a move in algebraic
+                // notation, we have to put it back in the front of the list.
+                while (tokens.size() > 0) {
+                    token = popFrontLowercase(tokens);
+                    if (isValidAlgebraicNotation(token)) {
+                        restrict_search.push_back(Move(token));
+                    } else {
+                        // Perhaps there's another keyword
+                        auto it = valid_keywords.find(token);
+                        if (it != valid_keywords.end()) {
+                            // Add it back to the list of tokens
+                            tokens.push_front(token);
+                            break;
+                        } else {
+                            // There was garbage after the last move
+                            return false;
+                        }
+                    }
+                }
+                break;
+            default:
+                return false;
+        }
+    }
     return true;
 }

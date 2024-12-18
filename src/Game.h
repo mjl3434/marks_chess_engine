@@ -36,13 +36,7 @@ class Square
 class Move
 {
   public:
-    Move(std::string algebraic_notation)
-        : algebraic(algebraic_notation),
-          piece(Piece::EMPTY),
-          source_rank(-1),
-          source_file(-1),
-          destination_rank(-1),
-          destination_file(-1) {}
+    Move(std::string algebraic_notation);
     std::string algebraic;
     Piece piece;
     int8_t source_rank; // (row)
@@ -54,8 +48,10 @@ class Move
 class Game
 {
   public:
+    Piece getPieceAtSourceSquare(const Move&);
+
     Square board[8][8]; // [num_rows][num_columns]
-    Player current_players_turn;
+    Player current_player;
     bool white_kingside_castle_allowed = true;
     bool white_queenside_castle_allowed = true;
     bool black_kingside_castle_allowed = true;

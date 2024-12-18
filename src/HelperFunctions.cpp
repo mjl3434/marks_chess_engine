@@ -6,14 +6,16 @@
 #include <string>
 
 // It seems dumb that C++ doesn't have a standard library function which does this (as of Dec 2024)
-void toLower(std::string& str)
+void
+toLower(std::string& str)
 {
     std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) {
         return std::tolower(c);
     });
 }
 
-bool stringToInt(std::string& input, int& output)
+bool
+stringToInt(std::string& input, int& output)
 {
     int converted_value = 0;
 
@@ -31,4 +33,13 @@ bool stringToInt(std::string& input, int& output)
 
     output = converted_value;
     return true;
+}
+
+std::string
+popFrontLowercase(std::list<std::string>& tokens)
+{
+    std::string token = tokens.front();
+    tokens.pop_front();
+    toLower(token);
+    return token;
 }

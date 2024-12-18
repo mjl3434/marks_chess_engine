@@ -92,9 +92,15 @@ ChessEngine::startNewGame(void)
 }
 
 void
-ChessEngine::setUpPosition(std::string fen, std::list<Move>)
+ChessEngine::setUpPosition(std::string fen, std::list<Move> moves)
 {
+    setUpBoardFromFen(fen);
 
+    while (moves.size() > 0) {
+        Move current = moves.front();
+        moves.pop_front();
+        playMove(current);
+    }
 }
 
 void
@@ -111,6 +117,61 @@ ChessEngine::startCalculating(
                 int16_t nodes,
                 int16_t mate)
 {
+
+}
+
+void
+ChessEngine::playMove(const Move& move)
+{
+    Move local_move;
+
+    // The protocol does not specify what to do if we get a move which is
+    // illegal or doesn't make sense. If this happens we will print an
+    // error and then return without doing anything (no-op)
+    Piece piece_moved = game.getPieceAtSourceSquare(move);
+    if (piece_moved == Piece::EMPTY) {
+        fprintf(stderr, "Error: No piece to move at %s\n", move.algebraic.c_str());
+        return;
+    }
+
+    // Chec
+    local_move = move;
+    local_move.piece = piece_moved;
+}
+
+/**
+ * @brief Checks if a move is legal, with the game board in it's current state
+ */
+bool
+ChessEngine::isMoveLegal(const Move& move)
+{
+    if (move.piece == Piece::EMPTY) {
+        return false;
+    }
+
+    // Is the piece moving in a valid way?
+
+    switch (move.piece)
+    {
+        case Piece::WHITE_PAWN:
+            break;
+        case Piece::BLACK_PAWN:
+            break;
+        case Piece::WHITE_BISHOP:
+        case Piece::BLACK_BISHOP:
+            break;
+        case Piece::WHITE_ROOK:
+        case Piece::BLACK_ROOK:
+            break;
+        case Piece::WHITE_KNIGHT:
+        case Piece::BLACK_KNIGHT:
+            break;
+    }
+
+    // Is the current player's king in check
+    if (kingIsInCheck) {
+        // Is the king
+    }
 }
 
 void
@@ -227,9 +288,9 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
     toLower(whos_turn);
 
     if (whos_turn == "w") {
-        game.current_players_turn = Player::WHITE;
+        game.current_player = Player::WHITE;
     } else if (whos_turn == "b") {
-        game.current_players_turn = Player::BLACK;
+        game.current_player = Player::BLACK;
     }
 
     // Third field, castling availibility
