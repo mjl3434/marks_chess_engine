@@ -127,81 +127,15 @@ ChessEngine::playMove(const Move& move)
     // The protocol does not specify what to do if we get a move which is
     // illegal or doesn't make sense. If this happens we will print an
     // error and then return without doing anything (no-op)
-    Piece piece_moved = game.getPieceAtSourceSquare(move);
+    Piece piece_moved = game->getPieceAtSourceSquare(move);
     if (piece_moved == Piece::EMPTY) {
         fprintf(stderr, "Error: No piece to move at %s\n", move.algebraic.c_str());
         return;
     }
 
     // Check if move is legal
-    if (!isLegalMove(move)) {
-        fprintf(stderr, "Error: Illegal move in this context: %s");
-    }
-}
-
-/**
- * @brief Simply moves a piece, and adds the move to the moves list
- */
-void
-ChessEngine::makeMove(const Move& move)
-{
-
-}
-
-/**
- * @brief Checks if a move is legal, with the game board in it's current state
- */
-bool
-ChessEngine::isLegalMove(const Move& move)
-{
-    if (move.piece == Piece::EMPTY) {
-        return false;
-    }
-
-    // Is the piece moving in a valid way?
-
-    switch (move.piece)
-    {
-        case Piece::WHITE_PAWN:
-        case Piece::BLACK_PAWN:
-            if (!isValidPawnMove(move)) {
-                return false;
-            }
-            break;
-        case Piece::WHITE_BISHOP:
-        case Piece::BLACK_BISHOP:
-            if (!isValidBishopMove(move)) {
-                return false;
-            }
-            break;
-        case Piece::WHITE_ROOK:
-        case Piece::BLACK_ROOK:
-            if (!isValidRookMove(move)) {
-                return false;
-            }
-            break;
-        case Piece::WHITE_KNIGHT:
-        case Piece::BLACK_KNIGHT:
-            if (!isValidKnightMove(move)) {
-                return false;
-            }
-            break;
-        case Piece::WHITE_QUEEN:
-        case Piece::BLACK_QUEEN:
-            if (!isValidQueenMove(move)) {
-                return false;
-            }
-            break;
-        case Piece::WHITE_KING:
-        case Piece::BLACK_KING:
-            if (!isValidKingMove(move)) {
-                return false;
-            }
-            break;
-    }
-
-    if (kingIsInCheck()) {
-        // Is the king out of check after the move is made?
+    if (!game->isLegalMove(move)) {
+        fprintf(stderr, "Error: Illegal move in this context: %s", move.algebraic.c_str());
     }
 }
 
@@ -245,51 +179,51 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
         switch (c)
         {
             case 'P': 
-                game.board[row-1][column-1].piece = Piece::WHITE_PAWN;
+                game->board[row-1][column-1].piece = Piece::WHITE_PAWN;
                 column++;
                 break;
             case 'R':
-                game.board[row-1][column-1].piece = Piece::WHITE_ROOK;
+                game->board[row-1][column-1].piece = Piece::WHITE_ROOK;
                 column++;
                 break;
             case 'B':
-                game.board[row-1][column-1].piece = Piece::WHITE_BISHOP;
+                game->board[row-1][column-1].piece = Piece::WHITE_BISHOP;
                 column++;
                 break;
             case 'N':
-                game.board[row-1][column-1].piece = Piece::WHITE_KNIGHT;
+                game->board[row-1][column-1].piece = Piece::WHITE_KNIGHT;
                 column++;
                 break;
             case 'K':
-                game.board[row-1][column-1].piece = Piece::WHITE_KING;
+                game->board[row-1][column-1].piece = Piece::WHITE_KING;
                 column++;
                 break;
             case 'Q':
-                game.board[row-1][column-1].piece = Piece::WHITE_QUEEN;
+                game->board[row-1][column-1].piece = Piece::WHITE_QUEEN;
                 column++;
                 break;
             case 'p': 
-                game.board[row-1][column-1].piece = Piece::BLACK_PAWN;
+                game->board[row-1][column-1].piece = Piece::BLACK_PAWN;
                 column++;
                 break;
             case 'r':
-                game.board[row-1][column-1].piece = Piece::BLACK_ROOK;
+                game->board[row-1][column-1].piece = Piece::BLACK_ROOK;
                 column++;
                 break;
             case 'b':
-                game.board[row-1][column-1].piece = Piece::BLACK_BISHOP;
+                game->board[row-1][column-1].piece = Piece::BLACK_BISHOP;
                 column++;
                 break;
             case 'n':
-                game.board[row-1][column-1].piece = Piece::BLACK_KNIGHT;
+                game->board[row-1][column-1].piece = Piece::BLACK_KNIGHT;
                 column++;
                 break;
             case 'k':
-                game.board[row-1][column-1].piece = Piece::BLACK_KING;
+                game->board[row-1][column-1].piece = Piece::BLACK_KING;
                 column++;
                 break;
             case 'q':
-                game.board[row-1][column-1].piece = Piece::BLACK_QUEEN;
+                game->board[row-1][column-1].piece = Piece::BLACK_QUEEN;
                 column++;
                 break;
             case '1':
@@ -302,7 +236,7 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
             case '8':
                 num_blank_spaces = atoi(&c);
                 for (int i = 0; i < num_blank_spaces; i++) {
-                    game.board[row-1][column-1].piece = Piece::EMPTY;
+                    game->board[row-1][column-1].piece = Piece::EMPTY;
                     column++;
                 }
                 break;
@@ -319,34 +253,34 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
     toLower(whos_turn);
 
     if (whos_turn == "w") {
-        game.current_player = Player::WHITE;
+        game->current_player = Player::WHITE;
     } else if (whos_turn == "b") {
-        game.current_player = Player::BLACK;
+        game->current_player = Player::BLACK;
     }
 
     // Third field, castling availibility
     std::string castling = tokens.front();
     tokens.pop_front();
 
-    game.white_kingside_castle_allowed = false;
-    game.white_queenside_castle_allowed = false;
-    game.black_kingside_castle_allowed = false;
-    game.black_queenside_castle_allowed = false;
+    game->white_kingside_castle_allowed = false;
+    game->white_queenside_castle_allowed = false;
+    game->black_kingside_castle_allowed = false;
+    game->black_queenside_castle_allowed = false;
 
     for (const char c : castling) {
         switch (c)
         {
             case 'K':
-                game.white_kingside_castle_allowed = true;
+                game->white_kingside_castle_allowed = true;
                 break;
             case 'Q':
-                game.white_queenside_castle_allowed = true;
+                game->white_queenside_castle_allowed = true;
                 break;
             case 'k':
-                game.black_kingside_castle_allowed = true;
+                game->black_kingside_castle_allowed = true;
                 break;
             case 'q':
-                game.black_queenside_castle_allowed = true;
+                game->black_queenside_castle_allowed = true;
                 break;
             case '-':
             default:
@@ -362,14 +296,14 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
 
     // The only valid squares are on ranks 3 for white and 6 for black
     if (en_passant_target_square != "-") {
-        game.two_square_pawn_push_just_occured = true;
+        game->two_square_pawn_push_just_occured = true;
         toLower(en_passant_target_square);
         // Use subtraction to convert from a value in the ASCII range of
         // 97-104 for 'a'-'h' to, chess rank values of 1-8.
-        game.en_passant_target_square_rank = en_passant_target_square[0] - 'a' + 1;
-        game.en_passant_target_square_file = en_passant_target_square[1];
+        game->en_passant_target_square_rank = en_passant_target_square[0] - 'a' + 1;
+        game->en_passant_target_square_file = en_passant_target_square[1];
     } else {
-        game.two_square_pawn_push_just_occured = false;
+        game->two_square_pawn_push_just_occured = false;
     }
 
     // Fifth field, halfmove clock
@@ -378,7 +312,7 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
 
     int temp = 0;
     if (stringToInt(hmc,temp)) {
-        game.halfmove_clock = temp;
+        game->halfmove_clock = temp;
     }
 
     // Sixth field, total moves
@@ -387,6 +321,6 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
 
     temp = 0;
     if (stringToInt(total_moves, temp)) {
-        game.num_moves = temp;
+        game->num_moves = temp;
     }
 }

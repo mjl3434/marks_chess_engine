@@ -52,6 +52,7 @@ struct ChessGame
 
     Piece getPieceAtSourceSquare(const Move&);
     Piece getPieceAtDestinationSquare(const Move&);
+    void makeMove(const Move&);
     bool isLegalMove(const Move&);
     bool isValidPawnMove(const Move&);
     bool isValidBishopMove(const Move&);
@@ -79,3 +80,4 @@ struct ChessGame
     // With the full moves list, you don't need an of the FEN variables above
     std::list<Move> moves;
 };
+
