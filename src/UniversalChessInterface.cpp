@@ -235,7 +235,7 @@ UniversalChessInterface::isValidAlgebraicNotation(const std::string& input)
     std::string move = input; 
     toLower(move);
 
-    if (move.length() != 4) {
+    if (move.length() != 4 && move.length() != 5) {
         return false;
     }
 
@@ -244,7 +244,13 @@ UniversalChessInterface::isValidAlgebraicNotation(const std::string& input)
         (move[1] >= '1' && move[1] <= '8') &&
         (move[2] >= 'a' && move[2] <= 'h') &&
         (move[3] >= '1' && move[3] <= '8')) {
-        return true;
+
+        // Promotion, e.g.: e7e8q
+        if (move.length() == 5 && 
+            (move[4] == 'q' || move[4] == 'r' ||
+             move[4] == 'n' || move[4] == 'b')) {
+            return true;
+        }
     }
     return false;
 }

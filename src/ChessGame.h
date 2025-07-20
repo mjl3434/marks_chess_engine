@@ -27,28 +27,39 @@ enum class Player
     BLACK
 };
 
-class Square
+struct Square
 {
   public:
     Piece piece;
 };
 
-class Move
+struct Move
 {
   public:
     Move(std::string algebraic_notation);
     std::string algebraic;
     Piece piece;
+    Piece captured_piece;
     int8_t source_rank; // (row)
     int8_t source_file; // (column)
     int8_t destination_rank; // (row)
     int8_t destination_file; // (column)
 };
 
-class Game
+struct ChessGame
 {
   public:
+
     Piece getPieceAtSourceSquare(const Move&);
+    Piece getPieceAtDestinationSquare(const Move&);
+    bool isLegalMove(const Move&);
+    bool isValidPawnMove(const Move&);
+    bool isValidBishopMove(const Move&);
+    bool isValidKnightMove(const Move&);
+    bool isValidRookMove(const Move&);
+    bool isValidQueenMove(const Move&);
+    bool isValidKingMove(const Move&);
+    bool kingIsInCheck();
 
     Square board[8][8]; // [num_rows][num_columns]
     Player current_player;

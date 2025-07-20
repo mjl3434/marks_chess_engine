@@ -4,7 +4,7 @@
 #include <string>
 #include <utility>
 
-#include "Game.h"
+#include "ChessGame.h"
 
 class ChessEngine
 {
@@ -34,11 +34,11 @@ class ChessEngine
     void quit(void);
     void setUpBoardFromFen(const std::string&);
     void playMove(const Move&);
-    bool isMoveLegal(const Move&);
 
   private:
+
     bool debug_enabled = false;
     std::string engine_name = "Mark's Chess Engine Version 1.0";
     std::string author = "Mark Larwill";
-    Game game;
+    std::unique_ptr<ChessGame> game;
 };

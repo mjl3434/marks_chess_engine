@@ -85,6 +85,7 @@ ChessEngine::startNewGame(void)
     printf("Started new game!\n");
 
     // Clear any internal state left over from a previous game
+    game.reset();
 
     // Don't set up the board until we get a "position" command
 
@@ -123,8 +124,6 @@ ChessEngine::startCalculating(
 void
 ChessEngine::playMove(const Move& move)
 {
-    Move local_move;
-
     // The protocol does not specify what to do if we get a move which is
     // illegal or doesn't make sense. If this happens we will print an
     // error and then return without doing anything (no-op)
@@ -134,16 +133,26 @@ ChessEngine::playMove(const Move& move)
         return;
     }
 
-    // Chec
-    local_move = move;
-    local_move.piece = piece_moved;
+    // Check if move is legal
+    if (!isLegalMove(move)) {
+        fprintf(stderr, "Error: Illegal move in this context: %s");
+    }
+}
+
+/**
+ * @brief Simply moves a piece, and adds the move to the moves list
+ */
+void
+ChessEngine::makeMove(const Move& move)
+{
+
 }
 
 /**
  * @brief Checks if a move is legal, with the game board in it's current state
  */
 bool
-ChessEngine::isMoveLegal(const Move& move)
+ChessEngine::isLegalMove(const Move& move)
 {
     if (move.piece == Piece::EMPTY) {
         return false;
@@ -154,23 +163,45 @@ ChessEngine::isMoveLegal(const Move& move)
     switch (move.piece)
     {
         case Piece::WHITE_PAWN:
-            break;
         case Piece::BLACK_PAWN:
+            if (!isValidPawnMove(move)) {
+                return false;
+            }
             break;
         case Piece::WHITE_BISHOP:
         case Piece::BLACK_BISHOP:
+            if (!isValidBishopMove(move)) {
+                return false;
+            }
             break;
         case Piece::WHITE_ROOK:
         case Piece::BLACK_ROOK:
+            if (!isValidRookMove(move)) {
+                return false;
+            }
             break;
         case Piece::WHITE_KNIGHT:
         case Piece::BLACK_KNIGHT:
+            if (!isValidKnightMove(move)) {
+                return false;
+            }
+            break;
+        case Piece::WHITE_QUEEN:
+        case Piece::BLACK_QUEEN:
+            if (!isValidQueenMove(move)) {
+                return false;
+            }
+            break;
+        case Piece::WHITE_KING:
+        case Piece::BLACK_KING:
+            if (!isValidKingMove(move)) {
+                return false;
+            }
             break;
     }
 
-    // Is the current player's king in check
-    if (kingIsInCheck) {
-        // Is the king
+    if (kingIsInCheck()) {
+        // Is the king out of check after the move is made?
     }
 }
 
