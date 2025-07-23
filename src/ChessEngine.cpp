@@ -85,7 +85,7 @@ ChessEngine::startNewGame(void)
     printf("Started new game!\n");
 
     // Clear any internal state left over from a previous game
-    game.reset();
+    //game.reset();
 
     // Don't set up the board until we get a "position" command
 
@@ -127,16 +127,13 @@ ChessEngine::playMove(const Move& move)
     // The protocol does not specify what to do if we get a move which is
     // illegal or doesn't make sense. If this happens we will print an
     // error and then return without doing anything (no-op)
-    Piece piece_moved = game->getPieceAtSourceSquare(move);
-    if (piece_moved == Piece::EMPTY) {
-        fprintf(stderr, "Error: No piece to move at %s\n", move.algebraic.c_str());
-        return;
-    }
 
     // Check if move is legal
+    /*
     if (!game->isLegalMove(move)) {
         fprintf(stderr, "Error: Illegal move in this context: %s", move.algebraic.c_str());
     }
+    */
 }
 
 void
