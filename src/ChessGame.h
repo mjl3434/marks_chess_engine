@@ -43,7 +43,7 @@ public:
     int8_t destination_rank; // (row)
     int8_t destination_file; // (column)
 
-private:
+    // The fields below are not set in the constructor
     Piece piece;
     Piece captured_piece;
     //std::unique_ptr<SideEffects> side_effects = nullptr;
@@ -76,11 +76,11 @@ struct ChessGame
 {
 public:
 
-    void doMove(Move&);
-    void undoMove(Move&);
-    /*
+    void doMove(const Move&);
+    void undoMove(const Move&);
     Piece getPieceAtSourceSquare(const Move&);
     Piece getPieceAtDestinationSquare(const Move&);
+    /*
     void doKingsideCastle(Player player);
     void doQueensideCastle(Player player);
     bool isLegalMove(const Move&);

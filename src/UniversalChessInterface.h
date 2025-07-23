@@ -2,53 +2,19 @@
 
 #include <functional>
 #include <map>
-#include <optional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 
 #include "ChessEngine.h"
-
-using Command = std::function<void(ChessEngine&)>;
-
-enum class Keyword {
-    UCI,
-    DEBUG,
-        ON,
-        OFF,
-    ISREADY,
-    SETOPTION,
-        NAME,
-        VALUE,
-    REGISTER,
-        LATER,
-        // NAME (duplicated from above, different meaning here)
-        CODE,
-    UCINEWGAME,
-    POSITION,
-        FEN,
-        STARTPOS,
-            MOVES,
-    GO,
-        SEARCHMOVES,
-        PONDER,
-        WTIME,
-        BTIME,
-        WINC,
-        BINC,
-        MOVESTOGO,
-        DEPTH,
-        NODES,
-        MATE,
-        MOVETIME,
-        INFINITE,
-    STOP,
-    PONDERHIT,
-    QUIT
-};
+#include "Keyword.h"
+#include "UCICommand.h"
 
 // This class is in charge of knowing uci command syntax, parsing input,
 // validating it, and if valid creating a command, to send to the chess engine.
+// It does not know anything about chess. It can't validate that a chess move
+// is legal or not.
 class UniversalChessInterface
 {
   public:
@@ -56,16 +22,11 @@ class UniversalChessInterface
     bool isValidFen(const std::string&);
     bool isValidAlgebraicNotation(const std::string&);
     bool quitReceived(const std::string& input);
-    std::optional<Command> getCommand(const std::string&);
-    bool isValidDebugCommand(std::list<std::string>& tokens, bool&);
-    bool isValidSetoptionCommand(const std::string& input,
-            std::string& option_name, std::string& option_value);
-    bool isValidPositionCommand(std::list<std::string>& tokens,
-            std::string& fen, std::list<Move>& moves);
-    bool isValidGoCommand(std::list<std::string>& tokens,
-            std::list<Move> restrict_search, bool ponder, bool infinite,
-            int movetime, int wtime, int btime, int winc, int binc,
-            int movestogo, int depth, int nodes, int mate);
+    std::unique_ptr<UCICommand> getCommand(const std::string&);
+    bool isValidDebugCommand(const std::list<std::string>& tokens, DebugCommand& command);
+    bool isValidSetoptionCommand(const std::string& input, SetOptionCommand& set_option_command);
+    bool isValidPositionCommand(std::list<std::string>& tokens, PositionCommand& position_command);
+    bool isValidGoCommand(std::list<std::string>& tokens, GoCommand& go_command);
     bool isValidNoArgCommand(std::list<std::string>& tokens);
 
     std::unordered_map<std::string, enum Keyword> valid_keywords = {

@@ -1,45 +1,46 @@
 #pragma once
 
 #include <list>
-#include <string>
-#include <utility>
 #include <memory>
+#include <string>
+#include <thread>
+#include <utility>
 
 #include "ChessGame.h"
+#include "UCICommand.h"
 
 class ChessEngine
 {
-  public:
+public:
     ChessEngine();
-    void setDebug(bool enabled);
-    void doUciCommand(void);
-    void printSupportedOptions(void);
-    void respondWhenReady(void);
-    void setConfigurationOption(const std::string&, const std::string&);
-    void startNewGame(void);
-    void setUpPosition(std::string fen, std::list<Move>);
-    void startCalculating(
-            std::list<Move> searchMoves,
-            bool ponder,
-            bool infinite,
-            int32_t movetime,
-            int32_t wtime,
-            int32_t btime,
-            int32_t winc,
-            int32_t binc,
-            int16_t movestogo,
-            int16_t nodes,
-            int16_t mate);
-    void stopCalculating(void);
-    void ponderHit(void);
-    void quit(void);
+    void start();
+    void stop();
+
+    // Command handlers
+    void doDebugCommand(DebugCommand& command);
+    void doGoCommand(GoCommand& command);
+    void doIsReadyCommand(IsReadyCommand& command);
+    void doPonderHitCommand(PonderHitCommand& command);
+    void doPositionCommand(PositionCommand& command);
+    void doQuitCommand(QuitCommand& command);
+    void doSetOptionCommand(SetOptionCommand& command);
+    void doStopCommand(StopCommand& command);
+    void doUciCommand(UciCommand& command);
+    void doUciNewGameCommand(UciNewGameCommand& command);
+
+private:
+    // The main loop
+    void spin(void);
+
+    // Helper functions
     void setUpBoardFromFen(const std::string&);
+    void printSupportedOptions(void);
     void playMove(const Move&);
 
-  private:
-
+    // Private data
     bool debug_enabled = false;
     std::string engine_name = "Mark's Chess Engine Version 1.0";
     std::string author = "Mark Larwill";
     std::unique_ptr<ChessGame> game;
+    std::thread engine_thread;
 };
