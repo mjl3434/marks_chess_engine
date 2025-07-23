@@ -310,7 +310,7 @@ UniversalChessInterface::getCommand(const std::string& input)
                 Command debug_command = [enabled](ChessEngine& engine) {
                     engine.setDebug(enabled);
                 };
-                command_to_return.value() = debug_command;
+                command_to_return = debug_command;
             }
             break;
         }
@@ -320,7 +320,7 @@ UniversalChessInterface::getCommand(const std::string& input)
             Command uci_command = [](ChessEngine& engine) {
                 engine.doUciCommand();
             };
-            command_to_return.value() = uci_command;
+            command_to_return = uci_command;
             break;
         }
         case Keyword::ISREADY:
@@ -329,7 +329,7 @@ UniversalChessInterface::getCommand(const std::string& input)
             Command ready_okay_command = [](ChessEngine& engine) {
                 engine.respondWhenReady();
             };
-            command_to_return.value() = ready_okay_command;
+            command_to_return = ready_okay_command;
             break;
         }
         case Keyword::UCINEWGAME:
@@ -338,7 +338,7 @@ UniversalChessInterface::getCommand(const std::string& input)
             Command new_game_command = [](ChessEngine& engine) {
                 engine.startNewGame();
             };
-            command_to_return.value() = new_game_command;
+            command_to_return = new_game_command;
             break;
         }
         case Keyword::SETOPTION:
@@ -348,7 +348,7 @@ UniversalChessInterface::getCommand(const std::string& input)
                 Command setoption_command = [name, value](ChessEngine& engine) {
                     engine.setConfigurationOption(name, value);
                 };
-                command_to_return.value() = setoption_command;
+                command_to_return = setoption_command;
             }
             break;
         }  
@@ -368,7 +368,7 @@ UniversalChessInterface::getCommand(const std::string& input)
                 Command position_command = [fen, moves](ChessEngine& engine) {
                     engine.setUpPosition(fen, moves);
                 };
-                command_to_return.value() = position_command;
+                command_to_return = position_command;
 
             }
             break;
@@ -386,7 +386,7 @@ UniversalChessInterface::getCommand(const std::string& input)
                             movetime, wtime, btime, winc, binc, movestogo,
                             nodes, mate);
                 };
-                command_to_return.value() = go_command;
+                command_to_return = go_command;
             }
             break;
         }
