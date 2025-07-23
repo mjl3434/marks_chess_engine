@@ -8,7 +8,11 @@
 #include <sstream>
 #include <unordered_set>
 
+#include "Application.h"
+#include "ChessGame.h"
 #include "HelperFunctions.h"
+#include "UCICommand.h"
+#include "Keyword.h"
 
 ChessEngine::ChessEngine()
 {
@@ -16,13 +20,102 @@ ChessEngine::ChessEngine()
 }
 
 void
-ChessEngine::setDebug(bool enabled)
+ChessEngine::start()
 {
-    debug_enabled = enabled;
+    engine_thread = std::thread(&ChessEngine::spin, this);
 }
 
 void
-ChessEngine::doUciCommand(void)
+ChessEngine::stop() {
+    std::unique_ptr<UCICommand> quit_command = std::make_unique<QuitCommand>();
+    command_queue.enqueue(std::move(quit_command));
+    if (engine_thread.joinable()) {
+        engine_thread.join();
+    }
+}
+
+void
+ChessEngine::spin()
+{
+    while (true) {
+
+        // Block until a command is available
+        std::unique_ptr<UCICommand> command = command_queue.dequeue();
+
+        // NOTE: In all long-running functions we need to periodically check the non-blocking call
+        //
+        //     std::optional<std::unique_ptr<UCICommand>> command = command_queue.try_dequeue();
+        //
+        // to see if there's a new command we need to handle.
+
+        command->doCommand(*this);
+
+    }
+}
+
+
+void
+ChessEngine::doDebugCommand(DebugCommand& command)
+{
+    debug_enabled = command.debug_enabled;
+}
+
+void
+ChessEngine::doGoCommand(GoCommand& command)
+{
+    // Here's where we implement the search algorithm with min max tree
+
+}
+
+void
+ChessEngine::doIsReadyCommand(IsReadyCommand& command)
+{
+    std::cout << "readyok\n";
+}
+
+void
+ChessEngine::doPonderHitCommand(PonderHitCommand& command)
+{
+    // The opponent made the move we were thinking about
+    // now what?
+}
+
+void
+ChessEngine::doPositionCommand(PositionCommand& command)
+{
+    setUpBoardFromFen(command.fen);
+
+    while (command.moves.size() > 0) {
+        Move current = command.moves.front();
+        command.moves.pop_front();
+        playMove(current);
+    }
+}
+
+void
+ChessEngine::doQuitCommand(QuitCommand& command)
+{
+    // Clean up the engine
+}
+
+void
+ChessEngine::doSetOptionCommand(SetOptionCommand& command)
+{
+    // Set the configuration option in the chess engine
+    // For now we just print it out
+    std::cout << "Set option: " << command.name << " to " << command.value << "\n";
+    // In a real implementation we would store this in a map or similar structure
+    // and actually use it to configure the engine's behavior.
+}
+
+void
+ChessEngine::doStopCommand(StopCommand& command)
+{
+}
+
+
+void
+ChessEngine::doUciCommand(UciCommand& command)
 {
     std::cout << "id Name" << engine_name << "\n";
     std::cout << "id Author" << author << "\n";
@@ -60,27 +153,7 @@ ChessEngine::doUciCommand(void)
 }
 
 void
-ChessEngine::printSupportedOptions(void)
-{
-    // Once we support options we should print them here
-    // option name Foo FooValue1 FooValue2 ...
-    // option name Bar BarValue1 Baralue2 ...
-}
-
-void
-ChessEngine::respondWhenReady(void)
-{
-    std::cout << "readyok\n";
-}
-
-void
-ChessEngine::setConfigurationOption(const std::string& name, const std::string& value)
-{
-    // Once we support config options we would set them here
-}
-
-void
-ChessEngine::startNewGame(void)
+ChessEngine::doUciNewGameCommand(UciNewGameCommand& command)
 {
     printf("Started new game!\n");
 
@@ -90,65 +163,6 @@ ChessEngine::startNewGame(void)
     // Don't set up the board until we get a "position" command
 
     // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-}
-
-void
-ChessEngine::setUpPosition(std::string fen, std::list<Move> moves)
-{
-    setUpBoardFromFen(fen);
-
-    while (moves.size() > 0) {
-        Move current = moves.front();
-        moves.pop_front();
-        playMove(current);
-    }
-}
-
-void
-ChessEngine::startCalculating(
-                std::list<Move> searchMoves,
-                bool ponder,
-                bool infinite,
-                int32_t movetime,
-                int32_t wtime,
-                int32_t btime,
-                int32_t winc,
-                int32_t binc,
-                int16_t movestogo,
-                int16_t nodes,
-                int16_t mate)
-{
-
-}
-
-void
-ChessEngine::playMove(const Move& move)
-{
-    // The protocol does not specify what to do if we get a move which is
-    // illegal or doesn't make sense. If this happens we will print an
-    // error and then return without doing anything (no-op)
-
-    // Check if move is legal
-    /*
-    if (!game->isLegalMove(move)) {
-        fprintf(stderr, "Error: Illegal move in this context: %s", move.algebraic.c_str());
-    }
-    */
-}
-
-void
-ChessEngine::stopCalculating(void)
-{
-}
-
-void
-ChessEngine::ponderHit(void)
-{
-}
-
-void
-ChessEngine::quit(void)
-{
 }
 
 // Note: This must be called with a valid FEN string since no error checking is done
@@ -320,4 +334,23 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
     if (stringToInt(total_moves, temp)) {
         game->num_moves = temp;
     }
+}
+
+void
+ChessEngine::printSupportedOptions(void)
+{
+    // Once we support options we should print them here
+    // option name Foo FooValue1 FooValue2 ...
+    // option name Bar BarValue1 Baralue2 ...
+}
+
+void
+ChessEngine::playMove(const Move& move)
+{
+    // The protocol does not specify what to do if we get a move which is
+    // illegal or doesn't make sense. If this happens we will print an
+    // error and then return without doing anything (no-op)
+
+
+    game->doMove(move);
 }

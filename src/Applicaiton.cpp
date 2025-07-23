@@ -2,16 +2,18 @@
 
 #include <functional>
 #include <iostream>
-#include <optional>
+#include <memory>
 #include <string>
 
 #include "UniversalChessInterface.h"
+#include "UCICommand.h"
+
+// Global to be shared between threads
+ThreadSafeQueue<std::unique_ptr<UCICommand>> command_queue;
 
 Application::Application()
-    : chess_engine(),
-      command_queue(),
-      uci(),
-      worker(chess_engine, command_queue)
+    : _chess_engine(),
+      _uci()
 {
 }
 
@@ -21,47 +23,25 @@ Application::~Application()
 
 void Application::run()
 {
-    worker.start();
+    _chess_engine.start();
 
     std::string input;
     while (true) {
         std::getline(std::cin, input);
-        if (uci.quitReceived(input)) {
+        if (_uci.quitReceived(input)) {
             break;
         }
-        std::optional<Command> result = uci.getCommand(input);
-        if (result) {
-            command_queue.enqueue(std::move(*result));
+        std::unique_ptr<UCICommand> command = _uci.getCommand(input);
+        if (command != nullptr) {
+            command_queue.enqueue(std::move(command));
         }
     }
 
-    worker.stop();
+    _chess_engine.stop();
 }
 
+
 /*
-
-Define Chess Engine Methods (will need to call either way)
-
-void (std::list<std::pair<std::string, std::string>>);
-void startNewGame();
-void setUpPosition(std::string fen, std::list<Move>);
-void startCalculating(
-        std::list<Move> searchMoves,
-        bool ponder,
-        bool infinite,
-        int32_t movetime,
-        int32_t wtime,
-        int32_t btime,
-        int32_t winc,
-        int32_t binc,
-        int16_t movestogo,
-        int16_t nodes,
-        int16_t mate
-    );
-void stopCalculating();
-void ponderHit();
-void quit();
-
 
 actions:
     1. Tell chess engine debug on | off

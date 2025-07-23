@@ -13,7 +13,6 @@ Move::Move(std::string algebraic_notation)
     destination_rank = algebraic[3] - '0';
 }
 
-/*
 Piece
 ChessGame::getPieceAtSourceSquare(const Move& move)
 {
@@ -25,7 +24,6 @@ ChessGame::getPieceAtDestinationSquare(const Move& move)
 {
     return board[move.source_rank][move.source_file].piece;
 }
-*/
 
 /**
  * @brief Simply moves a piece, and adds the move to the moves list
@@ -33,8 +31,22 @@ ChessGame::getPieceAtDestinationSquare(const Move& move)
  *     - Previous code has already checked that the move is legal
  */
 void
-ChessGame::doMove(Move& move)
+ChessGame::doMove(const Move& move)
 {
+    Move player_move = move;
+
+    // Populate the move with the piece found at the source square on the board
+    player_move.piece = getPieceAtSourceSquare(player_move);
+
+    // Populate the captured piece, if any (if not destination will simply be empty)
+    player_move.captured_piece = getPieceAtDestinationSquare(player_move);
+
+    // Make the move on the game board
+    board[player_move.destination_rank][player_move.destination_file].piece = player_move.piece;
+    board[player_move.source_rank][player_move.source_file].piece = Piece::EMPTY;
+
+    moves.push_back(move);
+
 
     /*
     Player player;
@@ -126,8 +138,9 @@ ChessGame::doMove(Move& move)
 }
 
 void
-ChessGame::undoMove(Move&)
+ChessGame::undoMove(const Move&)
 {
+
 }
 
 #if 0
@@ -377,6 +390,7 @@ ChessGame::isValidQueenMove(const Move& move)
 bool 
 ChessGame::isValidKingMove(const Move& move)
 {
+    // FIXME: Incorrect, it's not how UCI shows castling
     bool is_kingside_castle = (move.algebraic == "0-0");
     bool is_queenside_castle = (move.algebraic == "0-0-0");
     bool is_castling = is_kingside_castle || is_queenside_castle;

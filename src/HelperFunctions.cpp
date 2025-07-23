@@ -43,3 +43,11 @@ popFrontLowercase(std::list<std::string>& tokens)
     toLower(token);
     return token;
 }
+
+std::string
+atFrontLowercase(std::list<std::string>& tokens)
+{
+    std::string token = tokens.front();
+    toLower(token);
+    return token;
+}

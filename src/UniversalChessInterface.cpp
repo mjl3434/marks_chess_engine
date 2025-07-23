@@ -9,7 +9,6 @@
 #include <string>
 #include <unordered_set>
 
-#include "ChessEngine.h"
 #include "HelperFunctions.h"
 
 bool
@@ -271,141 +270,125 @@ UniversalChessInterface::quitReceived(const std::string& input)
 
 // Parse the UCI input string, and if it's valid create a command object which
 // contains all of the relevant data, parsed into useful fields
-std::optional<Command>
+std::unique_ptr<UCICommand>
 UniversalChessInterface::getCommand(const std::string& input)
 {
-    std::optional<Command> command_to_return = std::nullopt;
+    std::unique_ptr<UCICommand> command_to_return = nullptr;
     std::stringstream ss(input);
     std::list<std::string> tokens;
     std::string token;
 
+    // Tokenize the input string to remove whitespace and simplify parsing
     while (ss >> token) {
         tokens.push_back(token);
     }
 
-    // Get the first token fron the list
-    token = popFrontLowercase(tokens);
+    // Get the first token from the list
+    token = atFrontLowercase(tokens);
 
     // Make sure it's a valid keyword
     auto it = valid_keywords.find(token);
     if (it == valid_keywords.end()) {
-        return std::nullopt;
+        return nullptr;
     }
 
     switch (it->second)
     {
         case Keyword::DEBUG:
         {
-            // Call isValidDebugCommand to check if the command syntax is valid,
-            // and if so extract all of the relevant data to output arguments.
-            // Next, create a lambda function that captures the local
-            // variables by value, and returns the whole lambda inside a
-            // std::optional, so that we can call the relevant chess engine
-            // method later. This separates parsing of a UCI command, from
-            // execution in the chess engine, and allows us to potentially que
-            // up multiple engine commands, later if necssary by queuing up the
-            // lambdas.
-            bool enabled;
-            if (isValidDebugCommand(tokens, enabled)) {
-                Command debug_command = [enabled](ChessEngine& engine) {
-                    engine.setDebug(enabled);
-                };
-                command_to_return = debug_command;
+            auto debug_command = std::make_unique<DebugCommand>(tokens);
+            if (!isValidDebugCommand(tokens, *debug_command)) {
+                command_to_return = std::move(debug_command);
+            } else {
+                return nullptr; // Invalid debug command
             }
             break;
         }
         case Keyword::UCI:
         {
-            // Be forgiving and ignore any trailing garbage after "uci"
-            Command uci_command = [](ChessEngine& engine) {
-                engine.doUciCommand();
-            };
-            command_to_return = uci_command;
+            auto uci_command = std::make_unique<UciCommand>(tokens);
+            if (isValidNoArgCommand(tokens)) {
+                command_to_return = std::move(uci_command);
+            } else {
+                return nullptr; // Invalid UCI command
+            }
             break;
         }
         case Keyword::ISREADY:
         {
-            // Be forgiving and ignore any trailing garbage after "isready"
-            Command ready_okay_command = [](ChessEngine& engine) {
-                engine.respondWhenReady();
-            };
-            command_to_return = ready_okay_command;
+            auto is_ready_command = std::make_unique<IsReadyCommand>(tokens);
+            if (isValidNoArgCommand(tokens)) {
+                command_to_return = std::move(is_ready_command);
+            } else {
+                return nullptr; // Invalid isready command
+            }
             break;
         }
         case Keyword::UCINEWGAME:
         {
-            // Be forgiving and ignore any trailing garbage after "ucinewgame"
-            Command new_game_command = [](ChessEngine& engine) {
-                engine.startNewGame();
-            };
-            command_to_return = new_game_command;
+            auto uci_new_game_command = std::make_unique<UciNewGameCommand>(tokens);
+            if (isValidNoArgCommand(tokens)) {
+                command_to_return = std::move(uci_new_game_command);
+            } else {
+                return nullptr; // Invalid ucinewgame command
+            }
             break;
         }
         case Keyword::SETOPTION:
         {
-            std::string name, value;
-            if (isValidSetoptionCommand(input, name, value)) {
-                Command setoption_command = [name, value](ChessEngine& engine) {
-                    engine.setConfigurationOption(name, value);
-                };
-                command_to_return = setoption_command;
+            auto set_option_command = std::make_unique<SetOptionCommand>(tokens);
+            if (isValidSetoptionCommand(input, *set_option_command)) {
+                command_to_return = std::move(set_option_command);
+            } else {
+                return nullptr; // Invalid setoption command
             }
             break;
         }  
-        /*
-        // FIXME: Add this, not quite sure what it's for
         case Keyword::REGISTER:
-            if (!isValidRegisterCommand(tokens)) {
-                return false;
-            }
+        {
+            // Since this is free software we have no need to register a software license
             break;
-        */ 
+        }
         case Keyword::POSITION:
         {
-            std::string fen;
-            std::list<Move> moves;
-            if (isValidPositionCommand(tokens, fen, moves)) {
-                Command position_command = [fen, moves](ChessEngine& engine) {
-                    engine.setUpPosition(fen, moves);
-                };
-                command_to_return = position_command;
-
+            auto position_command = std::make_unique<PositionCommand>(tokens);
+            if (isValidPositionCommand(tokens, *position_command)) {
+                command_to_return = std::move(position_command);
+            } else {
+                return nullptr; // Invalid position command
             }
             break;
         }
         case Keyword::GO:
         {
-            std::list<Move> restrict_search;
-            bool ponder, infinite;
-            int movetime, wtime, btime, winc, binc, movestogo, depth, nodes, mate;
-            if (isValidGoCommand(tokens, restrict_search, ponder, infinite,
-                    movetime, wtime, btime, winc, binc, movestogo, depth, nodes,
-                    mate)) {
-                Command go_command = [=](ChessEngine& engine) {
-                    engine.startCalculating(restrict_search, ponder, infinite,
-                            movetime, wtime, btime, winc, binc, movestogo,
-                            nodes, mate);
-                };
-                command_to_return = go_command;
+            auto go_command = std::make_unique<GoCommand>(tokens);
+            if (isValidGoCommand(tokens, *go_command)) {
+                command_to_return = std::move(go_command);
+            } else {
+                return nullptr; // Invalid go command
             }
             break;
         }
         case Keyword::STOP:
         {
+            auto stop_command = std::make_unique<StopCommand>(tokens);
             if (isValidNoArgCommand(tokens)) {
-                Command stop_command = [](ChessEngine& engine) {
-                    engine.stopCalculating();
-                };
+                command_to_return = std::move(stop_command);
+            } else {
+                return nullptr; // Invalid stop command
             }
             break;
         }
         case Keyword::PONDERHIT:
+        {
+            auto ponder_hit_command = std::make_unique<PonderHitCommand>(tokens);
             if (isValidNoArgCommand(tokens)) {
-                Command stop_command = [](ChessEngine& engine) {
-                    engine.ponderHit();
-                };
+                command_to_return = std::move(ponder_hit_command);
+            } else {
+                return nullptr; // Invalid ponderhit command
             }
             break;
+        }
         default:
             break;
     }
@@ -424,7 +407,7 @@ UniversalChessInterface::getCommand(const std::string& input)
  * @return True for valid command, false for invalid
  */
 bool
-UniversalChessInterface::isValidDebugCommand(std::list<std::string>& tokens, bool& enabled)
+UniversalChessInterface::isValidDebugCommand(const std::list<std::string>& tokens, DebugCommand& debug_command)
 {
     // The only token remaining should be "on" or "off"
     if (tokens.size() != 1) {
@@ -433,9 +416,9 @@ UniversalChessInterface::isValidDebugCommand(std::list<std::string>& tokens, boo
     std::string value = tokens.front();
     toLower(value);
     if (value == "on") {
-        enabled = true;
+        debug_command.debug_enabled = true; 
     } else if (value == "off") {
-        enabled = false;
+        debug_command.debug_enabled = false; 
     } else {
         // Unknown value, invalid command
         return false;
@@ -449,8 +432,8 @@ UniversalChessInterface::isValidDebugCommand(std::list<std::string>& tokens, boo
 bool
 UniversalChessInterface::isValidNoArgCommand(std::list<std::string>& tokens)
 {
-    // Noting comes after the stop
-    if (tokens.size() != 0) {
+    // Nothing comes after the command
+    if (tokens.size() != 1) {
         return false;
     }
     return true;
@@ -463,13 +446,11 @@ UniversalChessInterface::isValidNoArgCommand(std::list<std::string>& tokens)
  * undefined and ignored.
  * 
  * @param[in] input - The whole UCI string
- * @param[out] option_name - The parsed option name is stored here
- * @param[out] option_value - The parsed option value is stored here
+ * @param[out] set_option_command - Object containing the parsed data
  * @return True for valid command, false for invalid
  */
 bool
-UniversalChessInterface::isValidSetoptionCommand(const std::string& input,
-        std::string& option_name, std::string& option_value)
+UniversalChessInterface::isValidSetoptionCommand(const std::string& input, SetOptionCommand& set_option_command)
 {
     // Expect an option string like 
     // "setoption name Style value Risky\n"
@@ -481,21 +462,19 @@ UniversalChessInterface::isValidSetoptionCommand(const std::string& input,
     if (std::regex_match(input, matches, pattern)) {
         std::cout << "Match successful!" << std::endl;
         std::cout << "Captured name: " << matches[1] << std::endl;
-        option_name = matches[1];
+        set_option_command.name = matches[1];
         std::cout << "Captured value: " << matches[2] << std::endl;
-        option_value = matches[2];
+        set_option_command.value = matches[2];
     } else {
         std::cout << "No match!" << std::endl;
         return false;
     }
 
- 
     return true;
 }
 
 bool
-UniversalChessInterface::isValidPositionCommand(std::list<std::string>& tokens,
-        std::string& output_fen, std::list<Move>& output_moves)
+UniversalChessInterface::isValidPositionCommand(std::list<std::string>& tokens, PositionCommand& position_command)
 {
     // position [fen <fenstring> | startpos ]  moves <move1> .... <movei>
 	// set up the position described in fenstring on the internal board and
@@ -507,11 +486,12 @@ UniversalChessInterface::isValidPositionCommand(std::list<std::string>& tokens,
     const std::string startpos_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
     // Get next token after "position"
+    tokens.pop_front();
     std::string token = popFrontLowercase(tokens);
 
     // Get the correct FEN string to return
     if (token == "startpos") {
-        output_fen = startpos_fen;
+        position_command.fen = startpos_fen;
         if (tokens.size() == 0) {
             // We've reached the end of a "position startpos" command
             return true;
@@ -533,7 +513,7 @@ UniversalChessInterface::isValidPositionCommand(std::list<std::string>& tokens,
         if (!isValidFen(fen)) {
             return false;
         }
-        output_fen = fen;
+        position_command.fen = fen;
     } else {
         return false;
     }
@@ -555,7 +535,7 @@ UniversalChessInterface::isValidPositionCommand(std::list<std::string>& tokens,
             return false;
         } else {
             // Add our move to the moves list
-            output_moves.push_back(Move(token));
+            position_command.moves.push_back(Move(token));
         }
     }
 
@@ -563,15 +543,51 @@ UniversalChessInterface::isValidPositionCommand(std::list<std::string>& tokens,
 }
 
 bool
-UniversalChessInterface::isValidGoCommand(std::list<std::string>& tokens,
-        std::list<Move> restrict_search, bool ponder, bool infinite,
-        int movetime, int wtime, int btime, int winc, int binc,
-        int movestogo, int depth, int nodes, int mate)
+UniversalChessInterface::isValidGoCommand(std::list<std::string>& tokens, GoCommand& go_command)
 {
-    // Initialize output arguments to default values, -1 for "not set"
-    ponder = false; infinite = false;
-    movetime = -1; wtime = -1; btime = -1; winc = -1; binc = -1;
-    movestogo = -1; depth = -1; nodes = -1; mate = -1;
+    // * go
+    //     start calculating on the current position set up with the "position" command.
+    //     There are a number of commands that can follow this command, all will be sent in the same string.
+    //     If one command is not sent its value should be interpreted as it would not influence the search.
+    //     * searchmoves <move1> .... <movei>
+    //         restrict search to this moves only
+    //         Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
+    //         the engine should only search the two moves e2e4 and d2d4 in the initial position.
+    //     * ponder
+    //         start searching in pondering mode.
+    //         Do not exit the search in ponder mode, even if it's mate!
+    //         This means that the last move sent in in the position string is the ponder move.
+    //         The engine can do what it wants to do, but after a "ponderhit" command
+    //         it should execute the suggested move to ponder on. This means that the ponder move sent by
+    //         the GUI can be interpreted as a recommendation about which move to ponder. However, if the
+    //         engine decides to ponder on a different move, it should not display any mainlines as they are
+    //         likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
+    //         on the suggested move.
+    //     * wtime <x>
+    //         white has x msec left on the clock
+    //     * btime <x>
+    //         black has x msec left on the clock
+    //     * winc <x>
+    //         white increment per move in mseconds if x > 0
+    //     * binc <x>
+    //         black increment per move in mseconds if x > 0
+    //     * movestogo <x>
+    //         there are x moves to the next time control,
+    //         this will only be sent if x > 0,
+    //         if you don't get this and get the wtime and btime it's sudden death
+    //     * depth <x>
+    //         search x plies only.
+    //     * nodes <x>
+    //         search x nodes only,
+    //     * mate <x>
+    //         search for a mate in x moves
+    //     * movetime <x>
+    //         search exactly x mseconds
+    //     * infinite
+    //         search until the "stop" command. Do not exit the search without being told so in this mode!
+
+    // Discard the first token, which should be "go"
+    tokens.pop_front();
 
     while (tokens.size() > 0) {
         std::string token = popFrontLowercase(tokens);
@@ -590,62 +606,62 @@ UniversalChessInterface::isValidGoCommand(std::list<std::string>& tokens,
 
         switch (it->second) {
             case Keyword::PONDER:
-                ponder = true;
+                go_command.ponder = true;
                 break;
             case Keyword::INFINITE:
-                infinite = true;
+                go_command.infinite = true;
                 break;
             case Keyword::WTIME:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, wtime)) {
+                if (!stringToInt(token, go_command.wtime)) {
                     return false;
                 }
                 break;
             case Keyword::BTIME:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, btime)) {
+                if (!stringToInt(token, go_command.btime)) {
                     return false;
                 }
                 break;
             case Keyword::WINC:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, winc)) {
+                if (!stringToInt(token, go_command.winc)) {
                     return false;
                 }
                 break;
             case Keyword::BINC:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, binc)) {
+                if (!stringToInt(token, go_command.binc)) {
                     return false;
                 }
                 break;
             case Keyword::MOVESTOGO:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, movestogo)) {
+                if (!stringToInt(token, go_command.movestogo)) {
                     return false;
                 }
                 break;
             case Keyword::DEPTH:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, depth)) {
+                if (!stringToInt(token, go_command.depth)) {
                     return false;
                 }
                 break;
             case Keyword::NODES:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, nodes)) {
+                if (!stringToInt(token, go_command.nodes)) {
                     return false;
                 }
                 break;
             case Keyword::MATE:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, mate)) {
+                if (!stringToInt(token, go_command.mate)) {
                     return false;
                 }
                 break;
             case Keyword::MOVETIME:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, movetime)) {
+                if (!stringToInt(token, go_command.movetime)) {
                     return false;
                 }
                 break;
@@ -661,7 +677,7 @@ UniversalChessInterface::isValidGoCommand(std::list<std::string>& tokens,
                 while (tokens.size() > 0) {
                     token = popFrontLowercase(tokens);
                     if (isValidAlgebraicNotation(token)) {
-                        restrict_search.push_back(Move(token));
+                        go_command.search_moves.push_back(Move(token));
                     } else {
                         // Perhaps there's another keyword
                         auto it = valid_keywords.find(token);
