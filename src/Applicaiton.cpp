@@ -1,11 +1,28 @@
 #include "Application.h"
 
-#include <iostream>
-#include <string>
 #include <functional>
+#include <iostream>
+#include <optional>
+#include <string>
+
+#include "UniversalChessInterface.h"
+
+Application::Application()
+    : chess_engine(),
+      command_queue(),
+      uci(),
+      worker(chess_engine, command_queue)
+{
+}
+
+Application::~Application()
+{
+}
 
 void Application::run()
 {
+    worker.start();
+
     std::string input;
     while (true) {
         std::getline(std::cin, input);
@@ -14,12 +31,12 @@ void Application::run()
         }
         std::optional<Command> result = uci.getCommand(input);
         if (result) {
-            result.value()(chess_engine);
+            command_queue.enqueue(std::move(*result));
         }
     }
+
+    worker.stop();
 }
-
-
 
 /*
 
