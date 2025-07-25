@@ -171,19 +171,108 @@ ChessEngine::doUciNewGameCommand(UciNewGameCommand& command)
     printf("Started new game!\n");
 
     // Clear any internal state left over from a previous game
-    //game.reset();
+    _game.reset();
 
     // Don't set up the board until we get a "position" command
-
-    // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 }
 
 SearchResult
 ChessEngine::findBestMove(const GameState& game_state, const GoCommand& go_command)
 {
+    SearchResult result;
+    result.score = INT32_MIN;
+    int max_depth = go_command.depth > 0 ? go_command.depth : DEFAULT_MAX_SEARCH_DEPTH;
 
+    // Generate all legal moves
+    std::list<Move> legal_moves = generateLegalMoves(game_state);
 
+    for (const Move& move : legal_moves) {
+        // Make the move on a copy of the state
+        GameState new_state = game_state;  // Copy constructor
+        _game->doMove(move);
+        
+        // Search deeper with alpha-beta
+        int32_t score = minimax(new_state, max_depth - 1, INT32_MIN, INT32_MAX, false);
+
+        if (score > result.score) {
+            result.score = score;
+            result.best_move = move;
+        }
+    }
+    
+    return result;
 }
+
+std::list<Move>
+ChessEngine::generateLegalMoves(const GameState& game_state)
+{
+    std::list<Move> legal_moves;
+
+    // FIXME: Implement this
+
+    // For each pice on the board
+        // For each square that pice can move to
+            // If the move is legal
+                // Add the move to the list of legal moves
+
+    return legal_moves;
+}
+
+/*
+int ChessEngine::minimax(const GameState& state, int depth, int alpha, int beta, bool maximizing) {
+    // Base case: reached search depth or terminal position
+    if (depth == 0 || isGameOver(state)) {
+        return evaluatePosition(state);
+    }
+    
+    Rules rules;
+    auto moves = rules.generateLegalMoves(state, state.current_player);
+    
+    if (maximizing) {
+        int maxScore = INT_MIN;
+        for (const Move& move : moves) {
+            GameState newState = state;  // Copy
+            applyMove(newState, move);
+            
+            int score = minimax(newState, depth - 1, alpha, beta, false);
+            maxScore = std::max(maxScore, score);
+            alpha = std::max(alpha, score);
+            
+            if (beta <= alpha) {
+                break;  // Beta cutoff - prune remaining moves
+            }
+        }
+        return maxScore;
+    } else {
+        int minScore = INT_MAX;
+        for (const Move& move : moves) {
+            GameState newState = state;  // Copy
+            applyMove(newState, move);
+            
+            int score = minimax(newState, depth - 1, alpha, beta, true);
+            minScore = std::min(minScore, score);
+            beta = std::min(beta, score);
+            
+            if (beta <= alpha) {
+                break;  // Alpha cutoff - prune remaining moves
+            }
+        }
+        return minScore;
+    }
+}
+
+void ChessEngine::applyMove(GameState& state, const Move& move) {
+    // Update board
+    state.board[move.destination_rank][move.destination_file].piece = move.piece;
+    state.board[move.source_rank][move.source_file].piece = Piece::EMPTY;
+    
+    // Update game state
+    state.current_player = (state.current_player == Player::WHITE) ? Player::BLACK : Player::WHITE;
+    
+    // Handle special cases (castling, en passant, etc.)
+    updateGameStateFlags(state, move);
+}
+*/
 
 
 // Note: This must be called with a valid FEN string since no error checking is done
@@ -368,10 +457,4 @@ ChessEngine::printSupportedOptions(void)
 void
 ChessEngine::playMove(const Move& move)
 {
-    // The protocol does not specify what to do if we get a move which is
-    // illegal or doesn't make sense. If this happens we will print an
-    // error and then return without doing anything (no-op)
-
-
-    game->doMove(move);
 }
