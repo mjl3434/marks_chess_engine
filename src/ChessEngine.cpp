@@ -22,15 +22,15 @@ ChessEngine::ChessEngine()
 void
 ChessEngine::start()
 {
-    engine_thread = std::thread(&ChessEngine::spin, this);
+    _engine_thread = std::thread(&ChessEngine::spin, this);
 }
 
 void
 ChessEngine::stop() {
     std::unique_ptr<UCICommand> quit_command = std::make_unique<QuitCommand>();
     command_queue.enqueue(std::move(quit_command));
-    if (engine_thread.joinable()) {
-        engine_thread.join();
+    if (_engine_thread.joinable()) {
+        _engine_thread.join();
     }
 }
 
@@ -47,7 +47,6 @@ ChessEngine::spin()
         //     std::optional<std::unique_ptr<UCICommand>> command = command_queue.try_dequeue();
         //
         // to see if there's a new command we need to handle.
-
         command->doCommand(*this);
 
     }
@@ -57,14 +56,23 @@ ChessEngine::spin()
 void
 ChessEngine::doDebugCommand(DebugCommand& command)
 {
-    debug_enabled = command.debug_enabled;
+    _debug_enabled = command.debug_enabled;
 }
 
 void
 ChessEngine::doGoCommand(GoCommand& command)
 {
-    // Here's where we implement the search algorithm with min max tree
+    // Notes:
+    // - Min-Max algorithm with alpha-beta pruning
+    // - Time controls not implemented yet
 
+    // Do we really need to parse out the arguments here? Seems like extra work
+    //int max_depth = command.depth > 0 ? command.depth : DEFAULT_MAX_SEARCH_DEPTH;
+    //int time_limit = command.movetime > 0 ? command.movetime : 10000; // Default to 10 seconds if not specified
+
+    const GameState& game_state = _game->getLatestGameState();
+
+    SearchResult result = findBestMove(game_state, command);
 }
 
 void
@@ -78,6 +86,8 @@ ChessEngine::doPonderHitCommand(PonderHitCommand& command)
 {
     // The opponent made the move we were thinking about
     // now what?
+
+    // std::optional<std::unique_ptr<UCICommand>> command = command_queue.try_dequeue();
 }
 
 void
@@ -111,6 +121,9 @@ ChessEngine::doSetOptionCommand(SetOptionCommand& command)
 void
 ChessEngine::doStopCommand(StopCommand& command)
 {
+    // By the time we get here either the engine was not busy, or it stopped to
+    // try_dequeue and found a stop command. Clean up whatever we were doing.
+    // (But maybe that got done already after we found the stop command)
 }
 
 
@@ -165,9 +178,17 @@ ChessEngine::doUciNewGameCommand(UciNewGameCommand& command)
     // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
 }
 
+SearchResult
+ChessEngine::findBestMove(const GameState& game_state, const GoCommand& go_command)
+{
+
+
+}
+
+
 // Note: This must be called with a valid FEN string since no error checking is done
 void
-ChessEngine::setUpBoardFromFen(const std::string& fen)
+ChessEngine::setUpBoardFromFen(const std::string& fen, GameState& game_state)
 {
     std::list<std::string> tokens;
     std::istringstream stream(fen);
@@ -190,51 +211,51 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
         switch (c)
         {
             case 'P': 
-                game->board[row-1][column-1].piece = Piece::WHITE_PAWN;
+                game_state.board[row-1][column-1].piece = Piece::WHITE_PAWN;
                 column++;
                 break;
             case 'R':
-                game->board[row-1][column-1].piece = Piece::WHITE_ROOK;
+                game_state.board[row-1][column-1].piece = Piece::WHITE_ROOK;
                 column++;
                 break;
             case 'B':
-                game->board[row-1][column-1].piece = Piece::WHITE_BISHOP;
+                game_state.board[row-1][column-1].piece = Piece::WHITE_BISHOP;
                 column++;
                 break;
             case 'N':
-                game->board[row-1][column-1].piece = Piece::WHITE_KNIGHT;
+                game_state.board[row-1][column-1].piece = Piece::WHITE_KNIGHT;
                 column++;
                 break;
             case 'K':
-                game->board[row-1][column-1].piece = Piece::WHITE_KING;
+                game_state.board[row-1][column-1].piece = Piece::WHITE_KING;
                 column++;
                 break;
             case 'Q':
-                game->board[row-1][column-1].piece = Piece::WHITE_QUEEN;
+                game_state.board[row-1][column-1].piece = Piece::WHITE_QUEEN;
                 column++;
                 break;
             case 'p': 
-                game->board[row-1][column-1].piece = Piece::BLACK_PAWN;
+                game_state.board[row-1][column-1].piece = Piece::BLACK_PAWN;
                 column++;
                 break;
             case 'r':
-                game->board[row-1][column-1].piece = Piece::BLACK_ROOK;
+                game_state.board[row-1][column-1].piece = Piece::BLACK_ROOK;
                 column++;
                 break;
             case 'b':
-                game->board[row-1][column-1].piece = Piece::BLACK_BISHOP;
+                game_state.board[row-1][column-1].piece = Piece::BLACK_BISHOP;
                 column++;
                 break;
             case 'n':
-                game->board[row-1][column-1].piece = Piece::BLACK_KNIGHT;
+                game_state.board[row-1][column-1].piece = Piece::BLACK_KNIGHT;
                 column++;
                 break;
             case 'k':
-                game->board[row-1][column-1].piece = Piece::BLACK_KING;
+                game_state.board[row-1][column-1].piece = Piece::BLACK_KING;
                 column++;
                 break;
             case 'q':
-                game->board[row-1][column-1].piece = Piece::BLACK_QUEEN;
+                game_state.board[row-1][column-1].piece = Piece::BLACK_QUEEN;
                 column++;
                 break;
             case '1':
@@ -247,7 +268,7 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
             case '8':
                 num_blank_spaces = atoi(&c);
                 for (int i = 0; i < num_blank_spaces; i++) {
-                    game->board[row-1][column-1].piece = Piece::EMPTY;
+                    game_state.board[row-1][column-1].piece = Piece::EMPTY;
                     column++;
                 }
                 break;
@@ -264,34 +285,34 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
     toLower(whos_turn);
 
     if (whos_turn == "w") {
-        game->current_player = Player::WHITE;
+        game_state.current_player = Player::WHITE;
     } else if (whos_turn == "b") {
-        game->current_player = Player::BLACK;
+        game_state.current_player = Player::BLACK;
     }
 
     // Third field, castling availibility
     std::string castling = tokens.front();
     tokens.pop_front();
 
-    game->white_kingside_castle_allowed = false;
-    game->white_queenside_castle_allowed = false;
-    game->black_kingside_castle_allowed = false;
-    game->black_queenside_castle_allowed = false;
+    game_state.white_kingside_castle_allowed = false;
+    game_state.white_queenside_castle_allowed = false;
+    game_state.black_kingside_castle_allowed = false;
+    game_state.black_queenside_castle_allowed = false;
 
     for (const char c : castling) {
         switch (c)
         {
             case 'K':
-                game->white_kingside_castle_allowed = true;
+                game_state.white_kingside_castle_allowed = true;
                 break;
             case 'Q':
-                game->white_queenside_castle_allowed = true;
+                game_state.white_queenside_castle_allowed = true;
                 break;
             case 'k':
-                game->black_kingside_castle_allowed = true;
+                game_state.black_kingside_castle_allowed = true;
                 break;
             case 'q':
-                game->black_queenside_castle_allowed = true;
+                game_state.black_queenside_castle_allowed = true;
                 break;
             case '-':
             default:
@@ -307,14 +328,14 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
 
     // The only valid squares are on ranks 3 for white and 6 for black
     if (en_passant_target_square != "-") {
-        game->two_square_pawn_push_just_occured = true;
+        game_state.two_square_pawn_push_just_occured = true;
         toLower(en_passant_target_square);
         // Use subtraction to convert from a value in the ASCII range of
         // 97-104 for 'a'-'h' to, chess rank values of 1-8.
-        game->en_passant_target_square_rank = en_passant_target_square[0] - 'a' + 1;
-        game->en_passant_target_square_file = en_passant_target_square[1];
+        game_state.en_passant_target_square_rank = en_passant_target_square[0] - 'a' + 1;
+        game_state.en_passant_target_square_file = en_passant_target_square[1];
     } else {
-        game->two_square_pawn_push_just_occured = false;
+        game_state.two_square_pawn_push_just_occured = false;
     }
 
     // Fifth field, halfmove clock
@@ -323,7 +344,7 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
 
     int temp = 0;
     if (stringToInt(hmc,temp)) {
-        game->halfmove_clock = temp;
+        game_state.halfmove_clock = temp;
     }
 
     // Sixth field, total moves
@@ -332,7 +353,7 @@ ChessEngine::setUpBoardFromFen(const std::string& fen)
 
     temp = 0;
     if (stringToInt(total_moves, temp)) {
-        game->num_moves = temp;
+        game_state.num_moves = temp;
     }
 }
 

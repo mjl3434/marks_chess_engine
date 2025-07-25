@@ -613,25 +613,25 @@ UniversalChessInterface::isValidGoCommand(std::list<std::string>& tokens, GoComm
                 break;
             case Keyword::WTIME:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, go_command.wtime)) {
+                if (!stringToInt(token, go_command.wtime_ms)) {
                     return false;
                 }
                 break;
             case Keyword::BTIME:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, go_command.btime)) {
+                if (!stringToInt(token, go_command.btime_ms)) {
                     return false;
                 }
                 break;
             case Keyword::WINC:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, go_command.winc)) {
+                if (!stringToInt(token, go_command.winc_ms)) {
                     return false;
                 }
                 break;
             case Keyword::BINC:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, go_command.binc)) {
+                if (!stringToInt(token, go_command.binc_ms)) {
                     return false;
                 }
                 break;
@@ -643,25 +643,25 @@ UniversalChessInterface::isValidGoCommand(std::list<std::string>& tokens, GoComm
                 break;
             case Keyword::DEPTH:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, go_command.depth)) {
+                if (!stringToInt(token, go_command.max_depth)) {
                     return false;
                 }
                 break;
             case Keyword::NODES:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, go_command.nodes)) {
+                if (!stringToInt(token, go_command.max_nodes)) {
                     return false;
                 }
                 break;
             case Keyword::MATE:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, go_command.mate)) {
+                if (!stringToInt(token, go_command.mate_in_x)) {
                     return false;
                 }
                 break;
             case Keyword::MOVETIME:
                 token = popFrontLowercase(tokens);
-                if (!stringToInt(token, go_command.movetime)) {
+                if (!stringToInt(token, go_command.max_movetime_ms)) {
                     return false;
                 }
                 break;
