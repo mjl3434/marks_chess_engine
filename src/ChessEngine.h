@@ -14,9 +14,9 @@
 // Note: Thrown together, this may have to change
 struct SearchResult {
     Move best_move;
-    int score;
-    int depth_searched;
-    int nodes_searched;
+    int32_t score;
+    uint16_t depth_searched;
+    uint16_t nodes_searched;
     bool is_checkmate;
     bool is_stalemate;
     std::vector<Move> principal_variation; // Best line of play
@@ -47,6 +47,7 @@ private:
 
     // Main implementation functions
     SearchResult findBestMove(const GameState& game_state, const GoCommand& go_command);
+    std::list<Move> generateLegalMoves(const GameState& game_state);
 
     // Helper functions
     void setUpBoardFromFen(const std::string&);
