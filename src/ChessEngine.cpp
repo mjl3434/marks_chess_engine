@@ -177,22 +177,23 @@ ChessEngine::doUciNewGameCommand(UciNewGameCommand& command)
 }
 
 SearchResult
-ChessEngine::findBestMove(const GameState& game_state, const GoCommand& go_command)
+ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_command) const
 {
     SearchResult result;
     result.score = INT32_MIN;
-    int max_depth = go_command.depth > 0 ? go_command.depth : DEFAULT_MAX_SEARCH_DEPTH;
+    int max_depth = go_command.max_depth > 0 ? go_command.max_depth : DEFAULT_MAX_SEARCH_DEPTH;
 
     // Generate all legal moves
-    std::list<Move> legal_moves = generateLegalMoves(game_state);
+    std::list<Move> legal_moves = generateLegalMoves(starting_state);
 
     for (const Move& move : legal_moves) {
-        // Make the move on a copy of the state
-        GameState new_state = game_state;  // Copy constructor
-        _game->doMove(move);
-        
+
+        // Try the move on a copy of our game state
+        GameState search_state = starting_state;
+        applyMoveToState(move, search_state);
+
         // Search deeper with alpha-beta
-        int32_t score = minimax(new_state, max_depth - 1, INT32_MIN, INT32_MAX, false);
+        int32_t score = minimax(search_state, max_depth - 1, INT32_MIN, INT32_MAX, false);
 
         if (score > result.score) {
             result.score = score;
@@ -203,8 +204,52 @@ ChessEngine::findBestMove(const GameState& game_state, const GoCommand& go_comma
     return result;
 }
 
+int32_t
+ChessEngine::minimax(GameState game_state, int depth, int alpha, int beta, bool maximizing) const
+{
+    // Base case: reached search depth or terminal position
+    if (depth == 0 || _game->_rules.isGameOver(game_state)) {
+        return evaluatePosition(game_state);
+    }
+
+    Rules rules;
+    auto moves = rules.generateLegalMoves(game_state, game_state.current_player);
+
+    if (maximizing) {
+        int maxScore = INT32_MIN;
+        for (const Move& move : moves) {
+            GameState new_state = game_state;  // Copy
+            applyMoveToState(new_state, move);
+
+            int score = minimax(new_state, depth - 1, alpha, beta, false);
+            maxScore = std::max(maxScore, score);
+            alpha = std::max(alpha, score);
+            
+            if (beta <= alpha) {
+                break;  // Beta cutoff - prune remaining moves
+            }
+        }
+        return maxScore;
+    } else {
+        int minScore = INT32_MAX;
+        for (const Move& move : moves) {
+            GameState new_state = game_state;  // Copy
+            applyMoveToState(new_state, move);
+
+            int score = minimax(new_state, depth - 1, alpha, beta, true);
+            minScore = std::min(minScore, score);
+            beta = std::min(beta, score);
+            
+            if (beta <= alpha) {
+                break;  // Alpha cutoff - prune remaining moves
+            }
+        }
+        return minScore;
+    }
+}
+
 std::list<Move>
-ChessEngine::generateLegalMoves(const GameState& game_state)
+ChessEngine::generateLegalMoves(const GameState& game_state) const
 {
     std::list<Move> legal_moves;
 
@@ -218,66 +263,15 @@ ChessEngine::generateLegalMoves(const GameState& game_state)
     return legal_moves;
 }
 
-/*
-int ChessEngine::minimax(const GameState& state, int depth, int alpha, int beta, bool maximizing) {
-    // Base case: reached search depth or terminal position
-    if (depth == 0 || isGameOver(state)) {
-        return evaluatePosition(state);
-    }
-    
-    Rules rules;
-    auto moves = rules.generateLegalMoves(state, state.current_player);
-    
-    if (maximizing) {
-        int maxScore = INT_MIN;
-        for (const Move& move : moves) {
-            GameState newState = state;  // Copy
-            applyMove(newState, move);
-            
-            int score = minimax(newState, depth - 1, alpha, beta, false);
-            maxScore = std::max(maxScore, score);
-            alpha = std::max(alpha, score);
-            
-            if (beta <= alpha) {
-                break;  // Beta cutoff - prune remaining moves
-            }
-        }
-        return maxScore;
-    } else {
-        int minScore = INT_MAX;
-        for (const Move& move : moves) {
-            GameState newState = state;  // Copy
-            applyMove(newState, move);
-            
-            int score = minimax(newState, depth - 1, alpha, beta, true);
-            minScore = std::min(minScore, score);
-            beta = std::min(beta, score);
-            
-            if (beta <= alpha) {
-                break;  // Alpha cutoff - prune remaining moves
-            }
-        }
-        return minScore;
-    }
-}
+int32_t
+ChessEngine::evaluatePosition(const GameState& game_state) const
+{
 
-void ChessEngine::applyMove(GameState& state, const Move& move) {
-    // Update board
-    state.board[move.destination_rank][move.destination_file].piece = move.piece;
-    state.board[move.source_rank][move.source_file].piece = Piece::EMPTY;
-    
-    // Update game state
-    state.current_player = (state.current_player == Player::WHITE) ? Player::BLACK : Player::WHITE;
-    
-    // Handle special cases (castling, en passant, etc.)
-    updateGameStateFlags(state, move);
 }
-*/
-
 
 // Note: This must be called with a valid FEN string since no error checking is done
 void
-ChessEngine::setUpBoardFromFen(const std::string& fen, GameState& game_state)
+ChessEngine::setUpBoardFromFen(const std::string& fen, GameState& game_state) const
 {
     std::list<std::string> tokens;
     std::istringstream stream(fen);
@@ -447,7 +441,7 @@ ChessEngine::setUpBoardFromFen(const std::string& fen, GameState& game_state)
 }
 
 void
-ChessEngine::printSupportedOptions(void)
+ChessEngine::printSupportedOptions(void) const
 {
     // Once we support options we should print them here
     // option name Foo FooValue1 FooValue2 ...
@@ -455,6 +449,18 @@ ChessEngine::printSupportedOptions(void)
 }
 
 void
-ChessEngine::playMove(const Move& move)
+ChessEngine::applyMoveToState(const Move& move, GameState& game_state) const
 {
+    // Find the piece we're moving
+    Piece pice_moved = _game->getPieceAtSourceSquare(move);
+
+    // Find the piece we're capturing, if any
+    Piece captured_piece = _game->getPieceAtDestinationSquare(move);
+
+    // Make the move on the game board
+    game_state.board[move.destination_rank][move.destination_file].piece = pice_moved;
+    game_state.board[move.source_rank][move.source_file].piece = Piece::EMPTY;
+
+    // Update the game state as a result of the move
+    _game->update_game_state(move, game_state);
 }

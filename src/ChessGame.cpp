@@ -21,8 +21,8 @@ ChessGame::doMove(const Move& move)
     new_game_state.board[new_move.destination_rank][new_move.destination_file].piece = new_move.piece;
     new_game_state.board[new_move.source_rank][new_move.source_file].piece = Piece::EMPTY;
 
-    // Update the game state, which may have changed due to the move
-    update_game_state(new_game_state);
+    // Update the game state as a result of the move
+    update_game_state(new_move, new_game_state);
 
     // Now update our list of moves, and the game state
     _moves.push_back(new_move);
@@ -42,7 +42,7 @@ ChessGame::undoMove()
 }
 
 void
-ChessGame::update_game_state(GameState& to_update)
+ChessGame::update_game_state(const Move& move, GameState& game_state) const
 {
     // FIXME: Implement this
 
@@ -53,6 +53,13 @@ ChessGame::update_game_state(GameState& to_update)
     // If no pawn move, or capture increment the halfmove clock (for fifty-move rule)
 
     // If black just moved, increment the fullmove counter
+    if (game_state.current_player == Player::BLACK) {
+        game_state.num_moves++;
+    }
+
+    // Switch players
+    game_state.current_player = (game_state.current_player == Player::WHITE) ?
+                                Player::BLACK : Player::WHITE;
 }
 
 Piece

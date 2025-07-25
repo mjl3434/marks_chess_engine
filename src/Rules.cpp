@@ -345,6 +345,31 @@ Rules::isStalemate(const GameState& game_state) {
     return false;
 }
 
+bool
+Rules::isDrawByFiftyMoveRule(const GameState& state)
+{
+
+}
+
+bool isDrawByThreefoldRepetition(const GameState& state)
+{
+
+}
+
+bool isDrawByInsufficientMaterial(const GameState& state)
+{
+
+}
+
+bool
+Rules::isGameOver(const GameState& game_state) {
+    if (isCheckmate(game_state) || isStalemate(game_state) ||
+        isDrawByFiftyMoveRule(game_state) || isDrawByThreefoldRepetition(game_state) ||
+        isDrawByInsufficientMaterial(game_state)) {
+        return true;
+    }
+    return false;
+}
 
 /**
  * @brief Checks if a square is occupied by a piece

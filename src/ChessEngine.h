@@ -46,13 +46,15 @@ private:
     void spin(void);
 
     // Main implementation functions
-    SearchResult findBestMove(const GameState& game_state, const GoCommand& go_command);
-    std::list<Move> generateLegalMoves(const GameState& game_state);
+    SearchResult findBestMove(const GameState& game_state, const GoCommand& go_command) const;
+    int32_t minimax(GameState game_state, int depth, int alpha, int beta, bool maximizing) const;
+    std::list<Move> generateLegalMoves(const GameState& game_state) const;
+    int32_t evaluatePosition(const GameState& game_state) const;
 
     // Helper functions
-    void setUpBoardFromFen(const std::string&);
-    void printSupportedOptions(void);
-    void playMove(const Move&);
+    void setUpBoardFromFen(const std::string&, GameState& game_state) const;
+    void printSupportedOptions(void) const;
+    void applyMoveToState(const Move&, GameState& game_state) const;
 
     // Private data
     bool _debug_enabled = false;
