@@ -77,17 +77,18 @@ public:
     {}
     void doCommand(ChessEngine& engine) override;
     std::list<Move> search_moves;   // Restrict search to these moves
-    bool ponder = false;
-    bool infinite = false;
-    int32_t movetime = -1;
-    int32_t wtime = -1;
-    int32_t btime = -1;
-    int32_t winc = -1;
-    int32_t binc = -1;
-    int32_t nodes = -1;
-    int32_t movestogo = -1;
-    int32_t mate = -1;
-    int32_t depth = -1;
+    bool ponder = false;            // Enter ponder mode
+    bool infinite = false;          // No time limit, search until "stop" command
+    int32_t max_movetime_ms = -1;   // Limit search to this time in milliseconds
+    int32_t max_nodes = -1;         // Limit search to this many nodes
+    int32_t mate_in_x = -1;         // Search for mate in this many moves
+    int32_t max_depth = -1;         // Limit search to this many plys (half moves)
+    int32_t wtime_ms = -1;          // Game time left for white in milliseconds
+    int32_t btime_ms = -1;          // Game time left for black in milliseconds
+    int32_t winc_ms = -1;           // Time increment per move for white in milliseconds
+    int32_t binc_ms = -1;           // Time increment per move for black in milliseconds
+    int32_t movestogo = -1;         // Moves until next time control
+
 };
 
 class StopCommand : public UCICommand {
