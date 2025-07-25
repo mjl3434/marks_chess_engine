@@ -19,11 +19,11 @@ public:
     bool isKingInCheck(const GameState& state);
     bool isCheckmate(const GameState& state);
     bool isStalemate(const GameState& state);
+    bool isGameOver(const GameState& state);
+    bool isDrawByFiftyMoveRule(const GameState& state);
+    bool isDrawByThreefoldRepetition(const GameState& state);
+    bool isDrawByInsufficientMaterial(const GameState& state);
     bool isSquareOccupied(int8_t rank, int8_t file, const GameState& state);
-
-    bool drawByFiftyMoveRule(const GameState& state);
-    bool drawByThreefoldRepetition(const GameState& state);
-    bool drawByInsufficientMaterial(const GameState& state);
 
     /*
     bool isSquareUnderAttack(int8_t rank, int8_t file, Player player);
