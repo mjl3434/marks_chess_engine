@@ -93,12 +93,14 @@ ChessEngine::doPonderHitCommand(PonderHitCommand& command)
 void
 ChessEngine::doPositionCommand(PositionCommand& command)
 {
-    setUpBoardFromFen(command.fen);
+    GameState initial_game_state;
+
+    setUpBoardFromFen(command.fen, initial_game_state);
 
     while (command.moves.size() > 0) {
         Move current = command.moves.front();
         command.moves.pop_front();
-        playMove(current);
+        _game->doMove(current);
     }
 }
 
@@ -212,39 +214,38 @@ ChessEngine::minimax(GameState game_state, int depth, int alpha, int beta, bool 
         return evaluatePosition(game_state);
     }
 
-    Rules rules;
-    auto moves = rules.generateLegalMoves(game_state, game_state.current_player);
+    std::list<Move> moves = generateLegalMoves(game_state);
 
     if (maximizing) {
-        int maxScore = INT32_MIN;
+        int32_t max_score = INT32_MIN;
         for (const Move& move : moves) {
             GameState new_state = game_state;  // Copy
-            applyMoveToState(new_state, move);
+            applyMoveToState(move, new_state);
 
             int score = minimax(new_state, depth - 1, alpha, beta, false);
-            maxScore = std::max(maxScore, score);
+            max_score = std::max(max_score, score);
             alpha = std::max(alpha, score);
             
             if (beta <= alpha) {
                 break;  // Beta cutoff - prune remaining moves
             }
         }
-        return maxScore;
+        return max_score;
     } else {
-        int minScore = INT32_MAX;
+        int32_t min_score = INT32_MAX;
         for (const Move& move : moves) {
             GameState new_state = game_state;  // Copy
-            applyMoveToState(new_state, move);
+            applyMoveToState(move, new_state);
 
             int score = minimax(new_state, depth - 1, alpha, beta, true);
-            minScore = std::min(minScore, score);
+            min_score = std::min(min_score, score);
             beta = std::min(beta, score);
             
             if (beta <= alpha) {
                 break;  // Alpha cutoff - prune remaining moves
             }
         }
-        return minScore;
+        return min_score;
     }
 }
 
@@ -266,7 +267,8 @@ ChessEngine::generateLegalMoves(const GameState& game_state) const
 int32_t
 ChessEngine::evaluatePosition(const GameState& game_state) const
 {
-
+    // FIXME: Implement this
+    return 0;
 }
 
 // Note: This must be called with a valid FEN string since no error checking is done

@@ -32,3 +32,19 @@ Move::Move(std::string algebraic_notation)
         }
     }
 }
+
+/**
+ * @brief Default constructor for Move
+ * Note: This default constructor is necessary because SearchResult class has
+ * an empty move, and we need to be able to construct it empty and set it later.
+ */
+Move::Move()
+    : source_rank(0),
+      source_file(0),
+      destination_rank(0),
+      destination_file(0),
+      piece(Piece::EMPTY),
+      captured_piece(Piece::EMPTY),
+      promotion_chosen(Promotion::NONE)
+{
+}
