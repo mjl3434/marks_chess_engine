@@ -192,7 +192,7 @@ ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_c
 
         // Temporarily make the move on a copy
         GameState search_state = starting_state;
-        _game->_rules.tryMoveOnStateCopy(move, search_state);
+        _game->tryMoveOnStateCopy(move, search_state);
 
         // Search deeper with alpha-beta
         int32_t score = minimax(search_state, max_depth - 1, INT32_MIN, INT32_MAX, false);
@@ -224,7 +224,7 @@ ChessEngine::minimax(GameState game_state, int depth, int alpha, int beta, bool 
 
             // Temporarily make the move on a copy 
             GameState new_state = game_state;
-            rules.tryMoveOnStateCopy(move, new_state);
+            _game->tryMoveOnStateCopy(move, new_state);
 
             int score = minimax(new_state, depth - 1, alpha, beta, false);
             max_score = std::max(max_score, score);
@@ -241,7 +241,7 @@ ChessEngine::minimax(GameState game_state, int depth, int alpha, int beta, bool 
 
             // Temporarily make the move on a copy 
             GameState new_state = game_state;  // Copy
-            rules.tryMoveOnStateCopy(move, new_state);
+            _game->tryMoveOnStateCopy(move, new_state);
 
             int score = minimax(new_state, depth - 1, alpha, beta, true);
             min_score = std::min(min_score, score);

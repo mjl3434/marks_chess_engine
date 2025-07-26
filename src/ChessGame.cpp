@@ -1,7 +1,12 @@
 #include "ChessGame.h"
 
+ChessGame::ChessGame()
+    : _rules(*this)
+{
+}
+
 /**
- * @brief FIXME:
+ * @brief This function performs a move, and stores the move and state
  * Assumptions:
  *     - Previous code has already checked that the move is legal
  */
@@ -29,7 +34,6 @@ ChessGame::doMove(const Move& move)
     _game_state.push_back(new_game_state);
 }
 
-// FIXME: Do we want to return the move that was undone? This could be useful for un-doing and re-doing moves
 void
 ChessGame::undoMove()
 {
@@ -39,6 +43,23 @@ ChessGame::undoMove()
     // Remove the last move and game state
     _moves.pop_back();
     _game_state.pop_back();
+}
+
+void
+ChessGame::tryMoveOnStateCopy(const Move& move, GameState& game_state) const
+{
+    // Find the piece we're moving
+    Piece pice_moved = game_state.getPieceAtSourceSquare(move);
+
+    // Find the piece we're capturing, if any
+    Piece captured_piece = game_state.getPieceAtDestinationSquare(move);
+
+    // Make the move on the game board
+    game_state.board[move.destination_rank-1][move.destination_file-1].piece = pice_moved;
+    game_state.board[move.source_rank-1][move.source_file-1].piece = Piece::EMPTY;
+
+    // Update the game state as a result of the move
+    game_state.updateGameState(move);
 }
 
 Piece

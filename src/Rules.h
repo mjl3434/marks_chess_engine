@@ -5,10 +5,14 @@
 #include "Common.h"
 #include "GameState.h"
 
-// This class is completly stateless
+class ChessGame;    // Forward declaration
+
+// This class is completly stateless (except for a single reference to the parent class)
 class Rules
 {
 public:
+    Rules(const ChessGame& game);
+
     bool isLegalMove(const Move& move, const GameState& state);
     bool isValidPawnMove(const Move&, const GameState& state);
     bool isValidBishopMove(const Move&, const GameState& state);
@@ -27,12 +31,12 @@ public:
     bool isSquareUnderAttack(int8_t rank, int8_t file, const GameState& state);
     bool isKingSideCastle(const Move& move);
     bool isQueenSideCastle(const Move& move);
+    bool isSameColor(const Piece& piece1, const Piece& piece2);
+    bool isWhite(const Piece& piece);
+    bool isBlack(const Piece& piece);
 
     void tryMoveOnStateCopy(const Move&, GameState& game_state);
-    /*
-    bool isWhite(Piece piece);
-    bool isPawn(Piece piece);
-    */
-private:
     bool isKingInCheckAfterMove(const Move& move, const GameState& game_state);
+private:
+    const ChessGame& parent_game;
 };
