@@ -84,14 +84,14 @@ Rules::isValidPawnMove(const Move& move, const GameState& game_state)
 
     // The pawn is a complicated piece. Valid pawn moves are:
     // 1. Moving one square forward to an unoccupied square
-    // 2. Moving two squares forward from the starting position to an unoccupied square
-    // 3. Capturing an opponent's piece diagonally
+    // 2. Moving two squares forward from the starting position through two unoccupied squares
+    // 3. Capturing an opponent's piece diagonally one square
     // 4. En passant capture into the en passant target square
 
     // In both cases 1. and 2. the pawn must stay in the same file and the square
     // directly ahead must be unoccupied.
     if (move.destination_file == move.source_file &&
-        !isSquareOccupied(move.source_rank + forward_one_square, move.source_file)) {
+        !isSquareOccupied(move.source_rank + forward_one_square, move.source_file, game_state)) {
 
         // Check for case 1: Moving one square forward
         if (move.destination_rank == move.source_rank + forward_one_square) {
@@ -101,7 +101,7 @@ Rules::isValidPawnMove(const Move& move, const GameState& game_state)
         // Check for case 2: Moving two squares forward from the starting position
         if (move.source_rank == pawn_starting_rank &&
             move.destination_rank == move.source_rank + forward_two_squares &&
-            !isSquareOccupied(move.source_rank + forward_two_squares, move.source_file)) {
+            !isSquareOccupied(move.source_rank + forward_two_squares, move.source_file, game_state)) {
             return true;
         }
     }
@@ -112,10 +112,10 @@ Rules::isValidPawnMove(const Move& move, const GameState& game_state)
          move.destination_file == move.source_file + 1)) {
 
         // If they're moving into an occupied square, it's a capture
-        if (isSquareOccupied(move.destination_rank, move.destination_file) ||
-            (two_square_pawn_push_just_occured &&
-                move.destination_rank == en_passant_target_square_rank &&
-                move.destination_file == en_passant_target_square_file)) {
+        if (isSquareOccupied(move.destination_rank, move.destination_file, game_state) ||
+            (game_state._two_square_pawn_push_just_occured &&
+             move.destination_rank == game_state._en_passant_target_square_rank &&
+             move.destination_file == game_state._en_passant_target_square_file)) {
             // If the opponent's pawn just moved two squares forward, and they're
             // moving into the en passant target square, it's a valid en passant capture
             return true;
@@ -145,7 +145,7 @@ Rules::isValidBishopMove(const Move& move, const GameState& game_state)
     for (int i = 1; i < squares_moved; i++) {
         int check_rank = move.source_rank + (i * rank_direction);
         int check_file = move.source_file + (i * file_direction);
-        if (isSquareOccupied(check_rank, check_file)) {
+        if (isSquareOccupied(check_rank, check_file, game_state)) {
             return false;
         }
     }
@@ -194,7 +194,7 @@ Rules::isValidRookMove(const Move& move, const GameState& game_state)
     for (int i = 1; i < squares_moved; i++) {
         int8_t check_rank = move.source_rank + (i * rank_direction);
         int8_t check_file = move.source_file + (i * file_direction);
-        if (isSquareOccupied(check_rank, check_file)) {
+        if (isSquareOccupied(check_rank, check_file, game_state)) {
             return false;
         }
     }
@@ -208,7 +208,7 @@ Rules::isValidRookMove(const Move& move, const GameState& game_state)
 bool 
 Rules::isValidQueenMove(const Move& move, const GameState& game_state)
 {
-    if (isValidBishopMove(move) || isValidRookMove(move)) {
+    if (isValidBishopMove(move, game_state) || isValidRookMove(move, game_state)) {
         return true;
     }
     return false;
@@ -223,11 +223,9 @@ Rules::isValidQueenMove(const Move& move, const GameState& game_state)
 bool 
 Rules::isValidKingMove(const Move& move, const GameState& game_state)
 {
-    // FIXME: Incorrect, it's not how UCI shows castling
-    bool is_kingside_castle = (move.algebraic == "0-0");
-    bool is_queenside_castle = (move.algebraic == "0-0-0");
+    bool is_kingside_castle = isKingSideCastle(move);
+    bool is_queenside_castle = isQueenSideCastle(move);
     bool is_castling = is_kingside_castle || is_queenside_castle;
-    Player player = (move.piece == Piece::WHITE_KING) ? Player::WHITE : Player::BLACK;
 
     // The King is complicated. He can move one square in any direction. He can
     // move to an empty square, or can capture, he can also castle. He may never
@@ -240,87 +238,71 @@ Rules::isValidKingMove(const Move& move, const GameState& game_state)
     if (rank_diff > 1 || file_diff > 1) {
         return false;
     }
-
+    // If the king moves, he (obviously) can't stay in the same place
+    if (rank_diff == 0 && file_diff == 0) {
+        return false;
+    }
 
     // Castling logic is complicated. The king may only castle if all six conditions are met:
+    //
     // 1. The king has not moved yet
     // 2. The rook (which the king is castling with) has not moved yet
     // 3. The squares between the king and rook are unoccupied
-    // 4. The squares the king moves through are not under attack
+    // 4. The squares the king moves in are not under attack
     // 5. The king is not currently in check
     // 6. The king does not end up in check after castling
-
-    // Conditions 1 & 2 are tracked by the "castle_allowed" variables, which are updated in
-    // the doMove() function, and reversed in undoMove().
+    //
+    // Rather than check all six conditions, we update the castling rights
+    // flags when a move is made. These "right" amount to checking conditions
+    // 1 and 2.
 
     // First check if the king is castling
     if (is_castling) {
+        // Determine which player and rank we're working with
+        bool is_white = (move.piece == Piece::WHITE_KING);
+        int8_t king_rank = is_white ? 1 : 8;
         if (is_kingside_castle) {
-            // Kingside castling
-            if ((move.piece == Piece::WHITE_KING && !white_kingside_castle_allowed) ||
-                (move.piece == Piece::BLACK_KING && !black_kingside_castle_allowed)) {
+            // Check castling rights (conditions 1 and 2)
+            bool castle_allowed = is_white ? game_state._white_kingside_castle_allowed 
+                                           : game_state._black_kingside_castle_allowed;
+            if (!castle_allowed) {
                 return false;
             }
-        } else {
-            // Queenside castling
-            if (!((move.piece == Piece::WHITE_KING && !white_queenside_castle_allowed) ||
-                  (move.piece == Piece::BLACK_KING && !black_queenside_castle_allowed))) {
+            // Check condition 3: squares between king and rook are unoccupied
+            if (isSquareOccupied(king_rank, 6, game_state) ||
+                isSquareOccupied(king_rank, 7, game_state)) {
                 return false;
             }
-        }
-    }
-
-    // Check if the squares between the king and rook are unoccupied, or if the squares the
-    // king moves through are under attack
-    if (is_kingside_castle) {
-        // Kingside castling
-        if (move.piece == Piece::WHITE_KING) {
-            if ((isSquareOccupied(1, 6) || isSquareOccupied(1, 7)) || 
-                (isSquareUnderAttack(1, 6, Player::WHITE) ||
-                 isSquareUnderAttack(1, 7, Player::WHITE))) {
+            // Check conditions 4 and 5: king not in check and doesn't move through check
+            if (isSquareUnderAttack(king_rank, 5, game_state) || // King currently in check
+                isSquareUnderAttack(king_rank, 6, game_state) || // f-file under attack
+                isSquareUnderAttack(king_rank, 7, game_state)) { // g-file under attack
                 return false;
             }
-        } else {
-            // Black kingside castling
-            if (isSquareOccupied(8, 6) || isSquareOccupied(8, 7) ||
-                (isSquareUnderAttack(8, 6, Player::BLACK) ||
-                 isSquareUnderAttack(8, 7, Player::BLACK))) {
+        } else if (is_queenside_castle) {
+            // Check castling rights (conditions 1 and 2)
+            bool castle_allowed = is_white ? game_state._white_queenside_castle_allowed
+                                           : game_state._black_queenside_castle_allowed;
+            if (!castle_allowed) {
                 return false;
             }
-        }
-    } else if (is_queenside_castle) {
-        // Queenside castling
-        if (move.piece == Piece::WHITE_KING) {
-            if ((isSquareOccupied(1, 4) || isSquareOccupied(1, 3) || isSquareOccupied(1, 2)) ||
-                (isSquareUnderAttack(1, 4, Player::WHITE) ||
-                 isSquareUnderAttack(1, 3, Player::WHITE))) {
+            // Check condition 3: squares between king and rook are unoccupied
+            if (isSquareOccupied(king_rank, 2, game_state) ||
+                isSquareOccupied(king_rank, 3, game_state) ||
+                isSquareOccupied(king_rank, 4, game_state)) {
                 return false;
             }
-        } else {
-            // Black queenside castling
-            if ((isSquareOccupied(8, 4) || isSquareOccupied(8, 3) || isSquareOccupied(8, 2)) ||
-                (isSquareUnderAttack(8, 4, Player::BLACK) ||
-                 isSquareUnderAttack(8, 3, Player::BLACK))) {
+            // Check conditions 4 and 5: king not in check and doesn't move through check
+            if (isSquareUnderAttack(king_rank, 5, game_state) || // King currently in check
+                isSquareUnderAttack(king_rank, 4, game_state) || // d-file under attack
+                isSquareUnderAttack(king_rank, 3, game_state)) { // c-file under attack
                 return false;
             }
         }
     }
 
-    // FIXME: Move the king temporarily to the destination square
-    bool king_in_check = kingIsInCheck();
-
-    // FIXME: This is tricky because I need to be able to undo it
-    if (is_kingside_castle) {
-        doKingsideCastle(player);
-    } else if (is_queenside_castle) {
-        doQueensideCastle(player);
-    } else {
-        board[move.destination_rank][move.destination_file].piece = move.piece;
-        board[move.source_rank][move.source_file].piece = Piece::EMPTY;
-    }
-
-    // FIXME: Move the king back to the source square
-    if (king_in_check) {
+    // Check if king is in check after the move
+    if (isKingInCheckAfterMove(move, game_state)) {
         return false;
     }
 
@@ -329,36 +311,41 @@ Rules::isValidKingMove(const Move& move, const GameState& game_state)
 
 bool
 Rules::isKingInCheck(const GameState& game_state) {
-    // TBD
+    // FIXME: implement this
     return false;
 }
 
 bool
 Rules::isCheckmate(const GameState& game_state) {
-    // TBD
+    // FIXME: implement this
     return false;
 }
 
 bool
 Rules::isStalemate(const GameState& game_state) {
-    // TBD
+    // FIXME: implement this
     return false;
 }
 
 bool
 Rules::isDrawByFiftyMoveRule(const GameState& state)
 {
-
+    // FIXME: implement this
+    return false;
 }
 
-bool isDrawByThreefoldRepetition(const GameState& state)
+bool 
+Rules::isDrawByThreefoldRepetition(const GameState& state)
 {
-
+    // FIXME: implement this
+    return false;
 }
 
-bool isDrawByInsufficientMaterial(const GameState& state)
+bool 
+Rules::isDrawByInsufficientMaterial(const GameState& state)
 {
-
+    // FIXME: implement this
+    return false;
 }
 
 bool
@@ -383,16 +370,70 @@ Rules::isSquareOccupied(int8_t rank, int8_t file, const GameState& game_state)
     return game_state.board[rank - 1][file - 1].piece != Piece::EMPTY;
 }
 
-/*
 bool
-Rules::isWhite(Piece piece)
+Rules::isSquareUnderAttack(int8_t rank, int8_t file, const GameState& state)
 {
-    return (piece >= Piece::WHITE_PAWN && piece <= Piece::WHITE_KING);
+    // FIXME: Implement this
+    return false;
 }
 
 bool
-Rules::isPawn(Piece piece)
+Rules::isKingSideCastle(const Move& move)
 {
-    return (piece == Piece::WHITE_PAWN || piece == Piece::BLACK_PAWN);
+    // Kingside castling: King moves 2 squares to the right from starting position
+    return (move.piece == Piece::WHITE_KING &&
+            move.source_file == 5 &&
+            move.source_rank == 1 && 
+            move.destination_file == 7 &&
+            move.destination_rank == 1) ||
+           (move.piece == Piece::BLACK_KING &&
+            move.source_file == 5 &&
+            move.source_rank == 8 && 
+            move.destination_file == 7 &&
+            move.destination_rank == 8);
 }
-*/
+
+
+bool
+Rules::isQueenSideCastle(const Move& move)
+{
+    // Queenside castling: King moves 2 squares to the left from starting position
+    return (move.piece == Piece::WHITE_KING &&
+            move.source_file == 5 &&
+            move.source_rank == 1 && 
+            move.destination_file == 3 &&
+            move.destination_rank == 1) ||
+           (move.piece == Piece::BLACK_KING &&
+            move.source_file == 5 &&
+            move.source_rank == 8 &&
+            move.destination_file == 3 &&
+            move.destination_rank == 8);
+}
+
+void
+Rules::tryMoveOnStateCopy(const Move& move, GameState& game_state)
+{
+    // Find the piece we're moving
+    Piece pice_moved = game_state.getPieceAtSourceSquare(move);
+
+    // Find the piece we're capturing, if any
+    Piece captured_piece = game_state.getPieceAtDestinationSquare(move);
+
+    // Make the move on the game board
+    game_state.board[move.destination_rank][move.destination_file].piece = pice_moved;
+    game_state.board[move.source_rank][move.source_file].piece = Piece::EMPTY;
+
+    // Update the game state as a result of the move
+    game_state.updateGameState(move);
+}
+
+bool
+Rules::isKingInCheckAfterMove(const Move& move, const GameState& game_state)
+{
+    GameState copy = game_state;
+    tryMoveOnStateCopy(move, copy);
+    if (isSquareUnderAttack(move.destination_rank, move.destination_file, copy)) {
+        return true;
+    }
+    return false;
+}

@@ -24,9 +24,12 @@ public:
     bool isDrawByThreefoldRepetition(const GameState& state);
     bool isDrawByInsufficientMaterial(const GameState& state);
     bool isSquareOccupied(int8_t rank, int8_t file, const GameState& state);
+    bool isSquareUnderAttack(int8_t rank, int8_t file, const GameState& state);
+    bool isKingSideCastle(const Move& move);
+    bool isQueenSideCastle(const Move& move);
 
+    void tryMoveOnStateCopy(const Move&, GameState& game_state);
     /*
-    bool isSquareUnderAttack(int8_t rank, int8_t file, Player player);
     bool isWhite(Piece piece);
     bool isPawn(Piece piece);
     */

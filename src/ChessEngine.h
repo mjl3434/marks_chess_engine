@@ -54,7 +54,6 @@ private:
     // Helper functions
     void setUpBoardFromFen(const std::string&, GameState& game_state) const;
     void printSupportedOptions(void) const;
-    void applyMoveToState(const Move&, GameState& game_state) const;
 
     // Private data
     bool _debug_enabled = false;
