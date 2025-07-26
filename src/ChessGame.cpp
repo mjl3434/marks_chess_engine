@@ -29,6 +29,8 @@ ChessGame::doMove(const Move& move)
     // Update the game state as a result of the move
     new_game_state.updateGameState(new_move);
 
+    // FIXME: Do we need to update the unique_positions here
+
     // Now update our list of moves, and the game state
     _moves.push_back(new_move);
     _game_state.push_back(new_game_state);
@@ -61,6 +63,34 @@ ChessGame::tryMoveOnStateCopy(const Move& move, GameState& game_state) const
     // Update the game state as a result of the move
     game_state.updateGameState(move);
 }
+
+
+bool
+ChessGame::isDrawByFiftyMoveRule(const GameState& state) const
+{
+/*
+for (const auto& state : _game_state) {
+    std::string key = state.positionKey(); // Implement this!
+    position_counts[key]++;
+    if (position_counts[key] >= 3) {
+        return true; // Draw by threefold repetition
+    }
+}
+return false;
+*/
+
+    // FIXME: implement this
+    return false;
+}
+
+bool 
+ChessGame::isDrawByThreefoldRepetition(const GameState& state) const
+{
+    // FIXME: implement this
+    return false;
+}
+
+
 
 Piece
 ChessGame::getPieceAtSourceSquare(const Move& move) const

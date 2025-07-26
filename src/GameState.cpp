@@ -1,13 +1,15 @@
 #include "GameState.h"
 
+#include "Hash.h"
+
 Piece
-GameState::getPieceAtSourceSquare(const Move& move)
+GameState::getPieceAtSourceSquare(const Move& move) const
 {
     return board[move.source_rank][move.source_file].piece;
 }
 
 Piece
-GameState::getPieceAtDestinationSquare(const Move& move)
+GameState::getPieceAtDestinationSquare(const Move& move) const
 {
     return board[move.destination_rank][move.destination_file].piece;
 }
@@ -16,6 +18,7 @@ GameState::getPieceAtDestinationSquare(const Move& move)
  * @brief Update any game state variables that are changed by this move
  * Assumes:
  *     - The move passed in is legal
+ *     - You will check for end game conditions independently
  */
 void
 GameState::updateGameState(const Move& move)
@@ -66,13 +69,40 @@ GameState::updateGameState(const Move& move)
         _num_moves++;
     }
 
-    // FIXME: Do we want to check for these things here? Should we add them to game state?
-    //     - checkmate
-    //     - stalemate
-    //     - draw by fifty-move rule
-    //     - draw by threefold repitition
-    //     - draw by insufficient material
+    // Update the game state hash, used to detect three fold repitition
+    setGameStateHash();
+
+    // In order to avoid adding a circular dependency the user should check for
+    // end of game conditions immediately after this function is called.
 
     // Switch players
     _current_player = (_current_player == Player::WHITE) ? Player::BLACK : Player::WHITE;
+}
+
+void
+GameState::setGameStateHash()
+{
+    std::size_t seed = 0;
+
+    // Hash the board
+    for (int rank = 0; rank < 8; rank++) {
+        for (int file = 0; file < 8; file++) {
+            hash_combine(seed, static_cast<uint32_t>(board[rank][file].piece));
+        }
+    }
+
+    // Hash player to move
+    hash_combine(seed, static_cast<uint32_t>(_current_player));
+
+    // Hash castling rights
+    hash_combine(seed, _white_kingside_castle_allowed);
+    hash_combine(seed, _white_queenside_castle_allowed);
+    hash_combine(seed, _black_kingside_castle_allowed);
+    hash_combine(seed, _black_queenside_castle_allowed);
+
+    // Hash en passant target square
+    hash_combine(seed, _en_passant_target_square_rank);
+    hash_combine(seed, _en_passant_target_square_file);
+
+    _game_state_hash = seed;
 }

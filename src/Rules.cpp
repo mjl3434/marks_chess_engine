@@ -345,20 +345,6 @@ Rules::isStalemate(const GameState& game_state) {
     return false;
 }
 
-bool
-Rules::isDrawByFiftyMoveRule(const GameState& state)
-{
-    // FIXME: implement this
-    return false;
-}
-
-bool 
-Rules::isDrawByThreefoldRepetition(const GameState& state)
-{
-    // FIXME: implement this
-    return false;
-}
-
 bool 
 Rules::isDrawByInsufficientMaterial(const GameState& state)
 {
@@ -368,8 +354,10 @@ Rules::isDrawByInsufficientMaterial(const GameState& state)
 
 bool
 Rules::isGameOver(const GameState& game_state) {
-    if (isCheckmate(game_state) || isStalemate(game_state) ||
-        isDrawByFiftyMoveRule(game_state) || isDrawByThreefoldRepetition(game_state) ||
+    if (isCheckmate(game_state) ||
+        isStalemate(game_state) ||
+        parent_game.isDrawByFiftyMoveRule(game_state) || 
+        parent_game.isDrawByThreefoldRepetition(game_state) ||
         isDrawByInsufficientMaterial(game_state)) {
         return true;
     }

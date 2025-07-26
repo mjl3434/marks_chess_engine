@@ -5,9 +5,10 @@
 class GameState
 {
 public:
-    Piece getPieceAtSourceSquare(const Move& move);
-    Piece getPieceAtDestinationSquare(const Move& move);
+    Piece getPieceAtSourceSquare(const Move& move) const;
+    Piece getPieceAtDestinationSquare(const Move& move) const;
     void updateGameState(const Move& move);
+    void setGameStateHash();
 
     Square board[8][8]; // [num_rows][num_columns]
     Player _current_player;
@@ -25,4 +26,5 @@ public:
     bool _white_queenside_castle_allowed = true;
     bool _black_kingside_castle_allowed = true;
     bool _black_queenside_castle_allowed = true;
+    std::size_t _game_state_hash;
 };
