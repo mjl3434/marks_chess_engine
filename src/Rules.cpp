@@ -1,5 +1,10 @@
 #include "Rules.h"
 
+#include "ChessGame.h"
+
+Rules::Rules(const ChessGame& game)
+    : parent_game(game) {}
+
 /**
  * @brief Checks if a move is legal, with the game board in it's current state
  * @param[in] move - The move to check if it's legal
@@ -126,6 +131,19 @@ Rules::isValidPawnMove(const Move& move, const GameState& game_state)
 }
 
 bool
+Rules::isValidKnightMove(const Move& move, const GameState& game_state)
+{
+    int8_t rank_diff = std::abs(move.destination_rank - move.source_rank);
+    int8_t file_diff = std::abs(move.destination_file - move.source_file);
+
+    // Check that the move is an L-shape: two squares in one direction and one square in the other
+    if ((rank_diff == 2 && file_diff == 1) || (rank_diff == 1 && file_diff == 2)) {
+        return true;
+    }
+    return false;
+}
+
+bool
 Rules::isValidBishopMove(const Move& move, const GameState& game_state)
 {
     int8_t squares_moved_horizontally = move.destination_file - move.source_file;
@@ -150,20 +168,15 @@ Rules::isValidBishopMove(const Move& move, const GameState& game_state)
         }
     }
 
-    return true;
-}
-
-bool
-Rules::isValidKnightMove(const Move& move, const GameState& game_state)
-{
-    int8_t rank_diff = std::abs(move.destination_rank - move.source_rank);
-    int8_t file_diff = std::abs(move.destination_file - move.source_file);
-
-    // Check that the move is an L-shape: two squares in one direction and one square in the other
-    if ((rank_diff == 2 && file_diff == 1) || (rank_diff == 1 && file_diff == 2)) {
-        return true;
+    // Check if destination square has a piece of the same color (can't capture own pieces)
+    if (isSquareOccupied(move.destination_rank, move.destination_file, game_state)) {
+        Piece destination_piece = game_state.board[move.destination_rank-1][move.destination_file-1].piece;
+        if (isSameColor(move.piece, destination_piece)) {
+            return false;
+        }
     }
-    return false;
+
+    return true;
 }
 
 bool
@@ -199,11 +212,16 @@ Rules::isValidRookMove(const Move& move, const GameState& game_state)
         }
     }
 
+    // Check if destination square has a piece of the same color (can't capture own pieces)
+    if (isSquareOccupied(move.destination_rank, move.destination_file, game_state)) {
+        Piece destination_piece = game_state.board[move.destination_rank-1][move.destination_file-1].piece;
+        if (isSameColor(move.piece, destination_piece)) {
+            return false;
+        }
+    }
+
     return true;
 }
-
-// FIXME: Note, the logic for both rooks, queens, and bishops doesn't consider that you can only
-// capture an opponent's piece if it's in the destination square. I need to fix this.
 
 bool 
 Rules::isValidQueenMove(const Move& move, const GameState& game_state)
@@ -367,7 +385,7 @@ bool
 Rules::isSquareOccupied(int8_t rank, int8_t file, const GameState& game_state)
 {
     // Check if the square is occupied
-    return game_state.board[rank - 1][file - 1].piece != Piece::EMPTY;
+    return game_state.board[rank-1][file-1].piece != Piece::EMPTY;
 }
 
 bool
@@ -410,30 +428,38 @@ Rules::isQueenSideCastle(const Move& move)
             move.destination_rank == 8);
 }
 
-void
-Rules::tryMoveOnStateCopy(const Move& move, GameState& game_state)
-{
-    // Find the piece we're moving
-    Piece pice_moved = game_state.getPieceAtSourceSquare(move);
-
-    // Find the piece we're capturing, if any
-    Piece captured_piece = game_state.getPieceAtDestinationSquare(move);
-
-    // Make the move on the game board
-    game_state.board[move.destination_rank][move.destination_file].piece = pice_moved;
-    game_state.board[move.source_rank][move.source_file].piece = Piece::EMPTY;
-
-    // Update the game state as a result of the move
-    game_state.updateGameState(move);
-}
-
 bool
 Rules::isKingInCheckAfterMove(const Move& move, const GameState& game_state)
 {
     GameState copy = game_state;
-    tryMoveOnStateCopy(move, copy);
+    parent_game.tryMoveOnStateCopy(move, copy);
     if (isSquareUnderAttack(move.destination_rank, move.destination_file, copy)) {
         return true;
     }
     return false;
+}
+
+bool
+Rules::isSameColor(const Piece& piece1, const Piece& piece2)
+{
+    if (piece1 == Piece::EMPTY || piece2 == Piece::EMPTY) {
+        return false;
+    }
+    if ((isWhite(piece1) && isWhite(piece2)) ||
+        (isBlack(piece1) && isBlack(piece2))) {
+        return true;
+    }
+    return false;
+}
+
+bool
+Rules::isWhite(const Piece& piece)
+{
+    return (piece >= Piece::WHITE_PAWN && piece <= Piece::WHITE_KING);
+}
+
+bool
+Rules::isBlack(const Piece& piece)
+{
+    return (piece >= Piece::BLACK_PAWN && piece <= Piece::BLACK_KING);
 }

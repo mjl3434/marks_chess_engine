@@ -8,8 +8,10 @@ class ChessGame
 {
 public:
 
+    ChessGame();
     void doMove(const Move&);
     void undoMove();
+    void tryMoveOnStateCopy(const Move& move, GameState& game_state) const;
 
     // Helper functions
     const GameState& getLatestGameState() const;
