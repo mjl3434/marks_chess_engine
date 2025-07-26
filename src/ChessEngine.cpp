@@ -190,9 +190,9 @@ ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_c
 
     for (const Move& move : legal_moves) {
 
-        // Try the move on a copy of our game state
+        // Temporarily make the move on a copy
         GameState search_state = starting_state;
-        applyMoveToState(move, search_state);
+        _game->_rules.tryMoveOnStateCopy(move, search_state);
 
         // Search deeper with alpha-beta
         int32_t score = minimax(search_state, max_depth - 1, INT32_MIN, INT32_MAX, false);
@@ -209,8 +209,10 @@ ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_c
 int32_t
 ChessEngine::minimax(GameState game_state, int depth, int alpha, int beta, bool maximizing) const
 {
+    Rules& rules = _game->_rules;
+
     // Base case: reached search depth or terminal position
-    if (depth == 0 || _game->_rules.isGameOver(game_state)) {
+    if (depth == 0 || rules.isGameOver(game_state)) {
         return evaluatePosition(game_state);
     }
 
@@ -219,8 +221,10 @@ ChessEngine::minimax(GameState game_state, int depth, int alpha, int beta, bool 
     if (maximizing) {
         int32_t max_score = INT32_MIN;
         for (const Move& move : moves) {
-            GameState new_state = game_state;  // Copy
-            applyMoveToState(move, new_state);
+
+            // Temporarily make the move on a copy 
+            GameState new_state = game_state;
+            rules.tryMoveOnStateCopy(move, new_state);
 
             int score = minimax(new_state, depth - 1, alpha, beta, false);
             max_score = std::max(max_score, score);
@@ -234,8 +238,10 @@ ChessEngine::minimax(GameState game_state, int depth, int alpha, int beta, bool 
     } else {
         int32_t min_score = INT32_MAX;
         for (const Move& move : moves) {
+
+            // Temporarily make the move on a copy 
             GameState new_state = game_state;  // Copy
-            applyMoveToState(move, new_state);
+            rules.tryMoveOnStateCopy(move, new_state);
 
             int score = minimax(new_state, depth - 1, alpha, beta, true);
             min_score = std::min(min_score, score);
@@ -370,34 +376,34 @@ ChessEngine::setUpBoardFromFen(const std::string& fen, GameState& game_state) co
     toLower(whos_turn);
 
     if (whos_turn == "w") {
-        game_state.current_player = Player::WHITE;
+        game_state._current_player = Player::WHITE;
     } else if (whos_turn == "b") {
-        game_state.current_player = Player::BLACK;
+        game_state._current_player = Player::BLACK;
     }
 
     // Third field, castling availibility
     std::string castling = tokens.front();
     tokens.pop_front();
 
-    game_state.white_kingside_castle_allowed = false;
-    game_state.white_queenside_castle_allowed = false;
-    game_state.black_kingside_castle_allowed = false;
-    game_state.black_queenside_castle_allowed = false;
+    game_state._white_kingside_castle_allowed = false;
+    game_state._white_queenside_castle_allowed = false;
+    game_state._black_kingside_castle_allowed = false;
+    game_state._black_queenside_castle_allowed = false;
 
     for (const char c : castling) {
         switch (c)
         {
             case 'K':
-                game_state.white_kingside_castle_allowed = true;
+                game_state._white_kingside_castle_allowed = true;
                 break;
             case 'Q':
-                game_state.white_queenside_castle_allowed = true;
+                game_state._white_queenside_castle_allowed = true;
                 break;
             case 'k':
-                game_state.black_kingside_castle_allowed = true;
+                game_state._black_kingside_castle_allowed = true;
                 break;
             case 'q':
-                game_state.black_queenside_castle_allowed = true;
+                game_state._black_queenside_castle_allowed = true;
                 break;
             case '-':
             default:
@@ -413,14 +419,14 @@ ChessEngine::setUpBoardFromFen(const std::string& fen, GameState& game_state) co
 
     // The only valid squares are on ranks 3 for white and 6 for black
     if (en_passant_target_square != "-") {
-        game_state.two_square_pawn_push_just_occured = true;
+        game_state._two_square_pawn_push_just_occured = true;
         toLower(en_passant_target_square);
         // Use subtraction to convert from a value in the ASCII range of
         // 97-104 for 'a'-'h' to, chess rank values of 1-8.
-        game_state.en_passant_target_square_rank = en_passant_target_square[0] - 'a' + 1;
-        game_state.en_passant_target_square_file = en_passant_target_square[1];
+        game_state._en_passant_target_square_rank = en_passant_target_square[0] - 'a' + 1;
+        game_state._en_passant_target_square_file = en_passant_target_square[1];
     } else {
-        game_state.two_square_pawn_push_just_occured = false;
+        game_state._two_square_pawn_push_just_occured = false;
     }
 
     // Fifth field, halfmove clock
@@ -429,7 +435,7 @@ ChessEngine::setUpBoardFromFen(const std::string& fen, GameState& game_state) co
 
     int temp = 0;
     if (stringToInt(hmc,temp)) {
-        game_state.halfmove_clock = temp;
+        game_state._halfmove_clock = temp;
     }
 
     // Sixth field, total moves
@@ -438,7 +444,7 @@ ChessEngine::setUpBoardFromFen(const std::string& fen, GameState& game_state) co
 
     temp = 0;
     if (stringToInt(total_moves, temp)) {
-        game_state.num_moves = temp;
+        game_state._num_moves = temp;
     }
 }
 
@@ -448,21 +454,4 @@ ChessEngine::printSupportedOptions(void) const
     // Once we support options we should print them here
     // option name Foo FooValue1 FooValue2 ...
     // option name Bar BarValue1 Baralue2 ...
-}
-
-void
-ChessEngine::applyMoveToState(const Move& move, GameState& game_state) const
-{
-    // Find the piece we're moving
-    Piece pice_moved = _game->getPieceAtSourceSquare(move);
-
-    // Find the piece we're capturing, if any
-    Piece captured_piece = _game->getPieceAtDestinationSquare(move);
-
-    // Make the move on the game board
-    game_state.board[move.destination_rank][move.destination_file].piece = pice_moved;
-    game_state.board[move.source_rank][move.source_file].piece = Piece::EMPTY;
-
-    // Update the game state as a result of the move
-    _game->update_game_state(move, game_state);
 }
