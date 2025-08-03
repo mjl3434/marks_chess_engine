@@ -1,5 +1,8 @@
 #pragma once
 
+#include <unordered_map>
+#include <vector>
+
 #include "Common.h"
 #include "GameState.h"
 #include "Rules.h"
