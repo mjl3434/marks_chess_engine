@@ -27,7 +27,7 @@ public:
 
 private:
 
-    std::unordered_map<std::string, int> unique_positions;
+    std::unordered_map<std::size_t, int> _unique_positions;
     std::vector<GameState> _game_state;
     std::vector<Move> _moves;
 };

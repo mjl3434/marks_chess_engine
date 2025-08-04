@@ -29,11 +29,12 @@ ChessGame::doMove(const Move& move)
     // Update the game state as a result of the move
     new_game_state.updateGameState(new_move);
 
-    // FIXME: Do we need to update the unique_positions here
-
-    // Now update our list of moves, and the game state
+    // Now update our list of moves
     _moves.push_back(new_move);
     _game_state.push_back(new_game_state);
+
+    // Update the count of how many times this unique position has been seen
+    _unique_positions[new_game_state._game_state_hash]++;
 }
 
 void
@@ -41,6 +42,16 @@ ChessGame::undoMove()
 {
     if (_moves.empty())
         return;
+
+    // Decrement the count of how many times this unique position has been seen
+    int last_position_hash = _game_state.back()._game_state_hash;
+    if (_unique_positions[last_position_hash] > 0) {
+        _unique_positions[last_position_hash]--;
+    }
+    // If it's the last one then remove the entry alltogether
+    if (_unique_positions[last_position_hash] == 0) {
+        _unique_positions.erase(last_position_hash);
+    }
 
     // Remove the last move and game state
     _moves.pop_back();
@@ -62,31 +73,28 @@ ChessGame::tryMoveOnStateCopy(const Move& move, GameState& game_state) const
 
     // Update the game state as a result of the move
     game_state.updateGameState(move);
+
+    // FIXME: It's really confusing on how to best detect three fold repitition without having a ChessGame
+    // Perhaps we need to keep something like the GameState that's for the game itself so we can have one
+    // copy for the real game, and another copy for the game being experimented on
 }
 
 
 bool
 ChessGame::isDrawByFiftyMoveRule(const GameState& state) const
 {
-/*
-for (const auto& state : _game_state) {
-    std::string key = state.positionKey(); // Implement this!
-    position_counts[key]++;
-    if (position_counts[key] >= 3) {
-        return true; // Draw by threefold repetition
-    }
-}
-return false;
-*/
 
-    // FIXME: implement this
-    return false;
 }
 
 bool 
 ChessGame::isDrawByThreefoldRepetition(const GameState& state) const
 {
-    // FIXME: implement this
+    for (const auto& state : _game_state) {
+        std::size_t key = state._game_state_hash;
+        if (_unique_positions[key] >= 3) {
+            return true;
+        }
+    }
     return false;
 }
 
