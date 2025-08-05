@@ -1,6 +1,5 @@
 #pragma once
 
-#include <unordered_map>
 #include <vector>
 
 #include "Common.h"
@@ -15,8 +14,13 @@ public:
     void doMove(const Move&);
     void undoMove();
     void tryMoveOnStateCopy(const Move& move, GameState& game_state) const;
-    bool isDrawByFiftyMoveRule(const GameState& state) const;
-    bool isDrawByThreefoldRepetition(const GameState& state) const;
+    bool isDrawByThreefoldRepetition(const GameState& game_state, const position_hash_t& previous_positions) const;
+    bool isDrawByThreefoldRepetition(const GameState& game_state) const;
+    void addToRepetitionTable(std::size_t hash, position_hash_t& positions) const;
+    void addToRepetitionTable(std::size_t hash);
+    void removeFromRepetitionTable(std::size_t hash, position_hash_t& positions) const;
+    void removeFromRepetitionTable(std::size_t hash);
+    position_hash_t getGamePositions() const;
 
     // Helper functions
     const GameState& getLatestGameState() const;

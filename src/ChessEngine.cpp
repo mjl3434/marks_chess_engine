@@ -192,28 +192,37 @@ ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_c
 
         // Temporarily make the move on a copy
         GameState search_state = starting_state;
+        auto repetition_table = _game->getGamePositions();
+
         _game->tryMoveOnStateCopy(move, search_state);
 
+        // Add the new position to the repetition table
+        _game->addToRepetitionTable(search_state._game_state_hash, repetition_table);
+
         // Search deeper with alpha-beta
-        int32_t score = minimax(search_state, max_depth - 1, INT32_MIN, INT32_MAX, false);
+        int32_t score = minimax(search_state, repetition_table, max_depth - 1, INT32_MIN, INT32_MAX, false);
+
+        // Remove the position from the repetition table (backtrack)
+        _game->removeFromRepetitionTable(search_state._game_state_hash, repetition_table);
 
         if (score > result.score) {
             result.score = score;
             result.best_move = move;
         }
     }
-    
+
     return result;
 }
 
 int32_t
-ChessEngine::minimax(GameState game_state, int depth, int alpha, int beta, bool maximizing) const
+ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
+    int depth, int alpha, int beta, bool maximizing) const
 {
     Rules& rules = _game->_rules;
 
     // Base case: reached search depth or terminal position
-    if (depth == 0 || rules.isGameOver(game_state)) {
-        return evaluatePosition(game_state);
+    if (depth == 0 || rules.isGameOver(game_state, repetition_table)) {
+        return evaluatePosition(game_state, repetition_table);
     }
 
     std::list<Move> moves = generateLegalMoves(game_state);
@@ -226,7 +235,15 @@ ChessEngine::minimax(GameState game_state, int depth, int alpha, int beta, bool 
             GameState new_state = game_state;
             _game->tryMoveOnStateCopy(move, new_state);
 
-            int score = minimax(new_state, depth - 1, alpha, beta, false);
+            // Add the new position to the repetition table
+            _game->addToRepetitionTable(new_state._game_state_hash, repetition_table);
+
+            // Keep recursing
+            int score = minimax(new_state, repetition_table, depth - 1, alpha, beta, false);
+
+            // Remove the position from the repetition table (backtrack)
+            _game->removeFromRepetitionTable(new_state._game_state_hash, repetition_table);
+
             max_score = std::max(max_score, score);
             alpha = std::max(alpha, score);
             
@@ -243,7 +260,15 @@ ChessEngine::minimax(GameState game_state, int depth, int alpha, int beta, bool 
             GameState new_state = game_state;  // Copy
             _game->tryMoveOnStateCopy(move, new_state);
 
-            int score = minimax(new_state, depth - 1, alpha, beta, true);
+            // Add the new position to the repetition table
+            _game->addToRepetitionTable(new_state._game_state_hash, repetition_table);
+
+            // Keep recursing
+            int score = minimax(new_state, repetition_table, depth - 1, alpha, beta, true);
+
+            // Remove the position from the repetition table (backtrack)
+            _game->removeFromRepetitionTable(new_state._game_state_hash, repetition_table);
+
             min_score = std::min(min_score, score);
             beta = std::min(beta, score);
             
@@ -271,7 +296,7 @@ ChessEngine::generateLegalMoves(const GameState& game_state) const
 }
 
 int32_t
-ChessEngine::evaluatePosition(const GameState& game_state) const
+ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repetition_table) const
 {
     // FIXME: Implement this
     return 0;
