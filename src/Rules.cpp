@@ -348,7 +348,76 @@ Rules::isStalemate(const GameState& game_state) {
 bool 
 Rules::isDrawByInsufficientMaterial(const GameState& state)
 {
-    // FIXME: implement this
+    // The following cases result in a draw by insufficient material
+    // - King vs King
+    // - King and Bishop vs King
+    // - King and Knight vs King
+    // - King and Bishop vs King and Bishop (bishops on same color)
+
+    uint8_t white_bishops = 0, black_bishops = 0;
+    uint8_t white_knights = 0, black_knights = 0;
+    uint8_t white_rooks = 0, black_rooks = 0;
+    uint8_t white_queens = 0, black_queens = 0;
+    uint8_t white_pawns = 0, black_pawns = 0;
+    uint8_t white_bishops_light = 0, white_bishops_dark = 0;
+    uint8_t black_bishops_light = 0, black_bishops_dark = 0;
+
+    for (int rank = 0; rank < 8; ++rank) {
+        for (int file = 0; file < 8; ++file) {
+            Piece p = state.board[rank][file].piece;
+            int square_color = ((rank + 1) + (file + 1)) % 2; // 0 = light, 1 = dark (1-based)
+            switch (p) {
+                case Piece::WHITE_BISHOP:
+                {
+                    white_bishops++;
+                    if (square_color == 0) white_bishops_light++; 
+                    else white_bishops_dark++;
+                    break;
+                }
+                case Piece::BLACK_BISHOP:
+                {
+                    black_bishops++;
+                    if (square_color == 0) black_bishops_light++;
+                    else black_bishops_dark++;
+                    break;
+                }
+                case Piece::WHITE_KNIGHT: white_knights++; break;
+                case Piece::BLACK_KNIGHT: black_knights++; break;
+                case Piece::WHITE_ROOK: white_rooks++; break;
+                case Piece::BLACK_ROOK: black_rooks++; break;
+                case Piece::WHITE_QUEEN: white_queens++; break;
+                case Piece::BLACK_QUEEN: black_queens++; break;
+                case Piece::WHITE_PAWN: white_pawns++; break;
+                case Piece::BLACK_PAWN: black_pawns++; break;
+                default: break;
+            }
+        }
+    }
+
+    // In all the cases there must be no rooks or queens
+    if (white_rooks == 0 && black_rooks == 0 && white_queens == 0 && black_queens == 0) {
+
+        // Only kings are left on the board
+        if (white_bishops == 0 && white_knights == 0 &&
+            black_bishops == 0 && black_knights == 0) {
+            return true;
+        }
+
+        // King and minor piece vs king
+        if ((white_bishops + white_knights == 1 && black_bishops + black_knights == 0) ||
+            (black_bishops + black_knights == 1 && white_bishops + white_knights == 0)) {
+            return true;
+        }
+
+        // King and Bishop vs King and Bishop (bishops on same color)
+        if (white_knights == 0 && black_knights == 0 && white_bishops == 1 && black_bishops == 1) {
+            if ((white_bishops_light == 1 && black_bishops_light == 1) ||
+                (white_bishops_dark == 1 && black_bishops_dark == 1)) {
+                return true;
+            }
+        }
+    }
+
     return false;
 }
 
@@ -364,16 +433,20 @@ Rules::isDrawByFiftyMoveRule(const GameState& state) const
     return false;
 }
 
-bool
-Rules::isGameOver(const GameState& game_state, position_hash_t& repetition_table) {
-    if (isCheckmate(game_state) ||
-        isStalemate(game_state) ||
-        isDrawByFiftyMoveRule(game_state) || 
-        parent_game.isDrawByThreefoldRepetition(game_state, repetition_table) ||
-        isDrawByInsufficientMaterial(game_state)) {
-        return true;
+GameResult
+Rules::checkForGameEndings(const GameState& game_state, position_hash_t& repetition_table) {
+    if (isCheckmate(game_state)) {
+        return GameResult::CHECKMATE;
+    } else if (isStalemate(game_state)) {
+        return GameResult::STALEMATE;
+    } else if (isDrawByFiftyMoveRule(game_state)) {
+        return GameResult::FIFTY_MOVE;
+    } else if (parent_game.isDrawByThreefoldRepetition(game_state, repetition_table)) {
+        return GameResult::THREEFOLD;
+    } else if (isDrawByInsufficientMaterial(game_state)) {
+        return GameResult::INSUFFICIENT_MATERIAL;
     }
-    return false;
+    return GameResult::NONE;
 }
 
 /**

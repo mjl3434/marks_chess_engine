@@ -5,6 +5,16 @@
 
 using position_hash_t = std::unordered_map<std::size_t, int>;
 
+enum class GameResult
+{
+    NONE,
+    CHECKMATE,
+    STALEMATE,
+    THREEFOLD,
+    FIFTY_MOVE,
+    INSUFFICIENT_MATERIAL
+};
+
 enum class Promotion
 {
     NONE = 0,

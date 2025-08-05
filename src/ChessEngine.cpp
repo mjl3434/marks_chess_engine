@@ -220,30 +220,21 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
 {
     Rules& rules = _game->_rules;
 
-    // FIXME: Add this:
-/*
-enum class GameResult { None, Checkmate, Stalemate, Threefold, FiftyMove, InsufficientMaterial };
+    GameResult result = rules.checkForGameEndings(game_state, repetition_table);
 
-GameResult isGameOver(const GameState&, const position_hash_t&);
-
-int32_t minimax(...) {
-    GameResult result = rules.isGameOver(game_state, repetition_table);
-    if (depth == 0 || result != GameResult::None) {
-        if (result == GameResult::Checkmate) {
-            // Return win/loss score depending on side to move
-        } else if (result == GameResult::Stalemate || result == GameResult::Threefold || result == GameResult::FiftyMove || result == GameResult::InsufficientMaterial) {
-            return 0; // Draw
+    if (result == GameResult::CHECKMATE) {
+        if (maximizing) {
+            return INT32_MAX;   // Checkmate is the best score possible
         } else {
-            return evaluatePosition(game_state, repetition_table);
+            return INT32_MIN;   // Return the most extreme results
         }
-    }
-    // ...rest of minimax...
-}
-
-*/
-
-    // Base case: reached search depth or terminal position
-    if (depth == 0 || rules.isGameOver(game_state, repetition_table)) {
+    } else if (result == GameResult::STALEMATE ||
+               result == GameResult::THREEFOLD ||
+               result == GameResult::FIFTY_MOVE ||
+               result == GameResult::INSUFFICIENT_MATERIAL) {
+        return 0;   // Draw
+    } else if (result == GameResult::NONE || depth == 0) {
+        // Base case: reached search depth or terminal position
         return evaluatePosition(game_state, repetition_table);
     }
 
