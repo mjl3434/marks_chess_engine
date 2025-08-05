@@ -220,6 +220,28 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
 {
     Rules& rules = _game->_rules;
 
+    // FIXME: Add this:
+/*
+enum class GameResult { None, Checkmate, Stalemate, Threefold, FiftyMove, InsufficientMaterial };
+
+GameResult isGameOver(const GameState&, const position_hash_t&);
+
+int32_t minimax(...) {
+    GameResult result = rules.isGameOver(game_state, repetition_table);
+    if (depth == 0 || result != GameResult::None) {
+        if (result == GameResult::Checkmate) {
+            // Return win/loss score depending on side to move
+        } else if (result == GameResult::Stalemate || result == GameResult::Threefold || result == GameResult::FiftyMove || result == GameResult::InsufficientMaterial) {
+            return 0; // Draw
+        } else {
+            return evaluatePosition(game_state, repetition_table);
+        }
+    }
+    // ...rest of minimax...
+}
+
+*/
+
     // Base case: reached search depth or terminal position
     if (depth == 0 || rules.isGameOver(game_state, repetition_table)) {
         return evaluatePosition(game_state, repetition_table);
