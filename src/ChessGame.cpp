@@ -34,7 +34,7 @@ ChessGame::doMove(const Move& move)
     _game_state.push_back(new_game_state);
 
     // Update the count of how many times this unique position has been seen
-    _unique_positions[new_game_state._game_state_hash]++;
+    addToRepetitionTable(new_game_state._game_state_hash);
 }
 
 void
@@ -43,15 +43,7 @@ ChessGame::undoMove()
     if (_moves.empty())
         return;
 
-    // Decrement the count of how many times this unique position has been seen
-    int last_position_hash = _game_state.back()._game_state_hash;
-    if (_unique_positions[last_position_hash] > 0) {
-        _unique_positions[last_position_hash]--;
-    }
-    // If it's the last one then remove the entry alltogether
-    if (_unique_positions[last_position_hash] == 0) {
-        _unique_positions.erase(last_position_hash);
-    }
+    removeFromRepetitionTable(_game_state.back()._game_state_hash);
 
     // Remove the last move and game state
     _moves.pop_back();
@@ -73,32 +65,64 @@ ChessGame::tryMoveOnStateCopy(const Move& move, GameState& game_state) const
 
     // Update the game state as a result of the move
     game_state.updateGameState(move);
-
-    // FIXME: It's really confusing on how to best detect three fold repitition without having a ChessGame
-    // Perhaps we need to keep something like the GameState that's for the game itself so we can have one
-    // copy for the real game, and another copy for the game being experimented on
 }
 
-
+/**
+ * @brief Checks if the hash in the current GameState has occured at least 3 times
+ * Assumes: You have already added the new hash to the repetition_table
+ */
 bool
-ChessGame::isDrawByFiftyMoveRule(const GameState& state) const
+ChessGame::isDrawByThreefoldRepetition(const GameState& game_state, const position_hash_t& repetition_table) const
 {
-
+    if (repetition_table.at(game_state._game_state_hash) >= 3) {
+        return true;
+    }
+    return false;
 }
 
 bool 
 ChessGame::isDrawByThreefoldRepetition(const GameState& state) const
 {
-    for (const auto& state : _game_state) {
-        std::size_t key = state._game_state_hash;
-        if (_unique_positions[key] >= 3) {
-            return true;
-        }
-    }
-    return false;
+    return isDrawByThreefoldRepetition(state, _unique_positions);
 }
 
 
+void
+ChessGame::addToRepetitionTable(std::size_t hash)
+{
+    addToRepetitionTable(hash, _unique_positions);
+}
+
+void
+ChessGame::addToRepetitionTable(std::size_t hash, position_hash_t& positions) const
+{
+    // Insert and increment count of how many times this unique position has been seen
+    positions[hash]++;
+}
+
+void
+ChessGame::removeFromRepetitionTable(std::size_t hash)
+{
+    removeFromRepetitionTable(hash, _unique_positions);
+}
+
+void
+ChessGame::removeFromRepetitionTable(std::size_t hash, position_hash_t& positions) const
+{
+    // Decrement the count of how many times this unique position has been seen
+    if (positions[hash] > 0) {
+        positions[hash]--;
+    }
+    // If it's the last one then remove the entry
+    if (positions[hash] == 0) {
+        positions.erase(hash);
+    }
+}
+
+position_hash_t ChessGame::getGamePositions() const
+{
+    return _unique_positions;
+}
 
 Piece
 ChessGame::getPieceAtSourceSquare(const Move& move) const

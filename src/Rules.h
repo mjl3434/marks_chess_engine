@@ -23,8 +23,9 @@ public:
     bool isKingInCheck(const GameState& state);
     bool isCheckmate(const GameState& state);
     bool isStalemate(const GameState& state);
-    bool isGameOver(const GameState& state);
+    bool isGameOver(const GameState& state, position_hash_t& repetition_table);
     bool isDrawByInsufficientMaterial(const GameState& state);
+    bool isDrawByFiftyMoveRule(const GameState& state) const;
     bool isSquareOccupied(int8_t rank, int8_t file, const GameState& state);
     bool isSquareUnderAttack(int8_t rank, int8_t file, const GameState& state);
     bool isKingSideCastle(const Move& move);

@@ -353,11 +353,23 @@ Rules::isDrawByInsufficientMaterial(const GameState& state)
 }
 
 bool
-Rules::isGameOver(const GameState& game_state) {
+Rules::isDrawByFiftyMoveRule(const GameState& state) const
+{
+    // The half move clock is updated after each move by updateGameState.
+    // Here, all we have to do is check if the 50 moves (100 half moves)
+    // has been reached.
+    if (state._halfmove_clock >= 100) {
+        return true;
+    }
+    return false;
+}
+
+bool
+Rules::isGameOver(const GameState& game_state, position_hash_t& repetition_table) {
     if (isCheckmate(game_state) ||
         isStalemate(game_state) ||
-        parent_game.isDrawByFiftyMoveRule(game_state) || 
-        parent_game.isDrawByThreefoldRepetition(game_state) ||
+        isDrawByFiftyMoveRule(game_state) || 
+        parent_game.isDrawByThreefoldRepetition(game_state, repetition_table) ||
         isDrawByInsufficientMaterial(game_state)) {
         return true;
     }

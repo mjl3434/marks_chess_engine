@@ -1,6 +1,9 @@
 #pragma once
 
 #include <string>
+#include <unordered_map>
+
+using position_hash_t = std::unordered_map<std::size_t, int>;
 
 enum class Promotion
 {
