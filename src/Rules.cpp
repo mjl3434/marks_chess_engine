@@ -146,14 +146,14 @@ Rules::isValidKnightMove(const Move& move, const GameState& game_state)
 bool
 Rules::isValidBishopMove(const Move& move, const GameState& game_state)
 {
-    int8_t squares_moved_horizontally = move.destination_file - move.source_file;
-    int8_t squares_moved_vertically = move.destination_rank - move.source_rank;
+    int8_t squares_moved_horizontally = std::abs(move.destination_file - move.source_file);
+    int8_t squares_moved_vertically = std::abs(move.destination_rank - move.source_rank);
 
     if (squares_moved_horizontally != squares_moved_vertically) {
         return false;
     }
 
-    int8_t squares_moved = std::abs(squares_moved_horizontally);
+    int8_t squares_moved = squares_moved_horizontally;
 
     // Calculate direction increments for both file and rank
     int8_t rank_direction = (move.destination_rank > move.source_rank) ? 1 : -1;
@@ -253,7 +253,7 @@ Rules::isValidKingMove(const Move& move, const GameState& game_state)
     int8_t file_diff = std::abs(move.destination_file - move.source_file);
 
     // King can only move one square in any direction (except for castling, handled below)
-    if (rank_diff > 1 || file_diff > 1) {
+    if (!is_castling && (rank_diff > 1 || file_diff > 1)) {
         return false;
     }
     // If the king moves, he (obviously) can't stay in the same place
@@ -819,9 +819,21 @@ Rules::isKingInCheckAfterMove(const Move& move, const GameState& game_state)
 {
     GameState copy = game_state;
     parent_game.tryMoveOnStateCopy(move, copy);
-    if (isSquareUnderAttack(move.destination_rank, move.destination_file, copy)) {
-        return true;
+
+    // After we try the move, the current player is updated. This means we now want to check
+    // if the previous player's king is in check.
+    Piece king = copy._current_player == Player::WHITE ? Piece::BLACK_KING : Piece::WHITE_KING;
+
+    // Find the previous player's king
+    for (int8_t r = 1, f = 1; r <= 8 && f <= 8; r++, f++) {
+        if (copy.board[r-1][f-1].piece == king) {
+            // Check if the king is being attacked after moving there
+            if (isSquareUnderAttack(r, f, copy)) {
+                return true;
+            }
+        }
     }
+
     return false;
 }
 
