@@ -328,20 +328,44 @@ Rules::isValidKingMove(const Move& move, const GameState& game_state)
 }
 
 bool
-Rules::isKingInCheck(const GameState& game_state) {
-    // FIXME: implement this
+Rules::isKingInCheck(const GameState& game_state)
+{
+    Piece king = game_state._current_player == Player::WHITE ? Piece::WHITE_KING : Piece::BLACK_KING;
+
+    // First locate the current player's king
+    for (int8_t r = 1; r <= 8; r++) {
+        for (int8_t f = 1; f <= 8; f++) {
+            if (game_state.board[r-1][f-1].piece == king) {
+                return isSquareUnderAttack(r, f, game_state);
+            }
+        }
+    }
     return false;
 }
 
 bool
 Rules::isCheckmate(const GameState& game_state) {
+
+    // Checkmate occurs when the king is under attack and it cannot eliminate all
+    // threats in one move by doing the following:
+    // - Capture the attacker(s)
+    // - Block the attacker(s) with another piece (if queen/rook/bishop)
+    // - Move out of the way to a safe square
+
     // FIXME: implement this
     return false;
 }
 
 bool
-Rules::isStalemate(const GameState& game_state) {
-    // FIXME: implement this
+Rules::isStalemate(const GameState& game_state)
+{
+    // A stalemate occurs when the king is not in check and current player has no legal moves
+    if (isKingInCheck(game_state)) {
+        return false; // If the king is in check, it's not stalemate (it might be a checkmate)
+    }
+
+    // FIXME: Implement this!
+
     return false;
 }
 
@@ -464,7 +488,296 @@ Rules::isSquareOccupied(int8_t rank, int8_t file, const GameState& game_state)
 bool
 Rules::isSquareUnderAttack(int8_t rank, int8_t file, const GameState& state)
 {
-    // FIXME: Implement this
+    uint8_t total_attack = 0;
+    Piece opposing_queen, opposing_rook, opposing_bishop, opposing_knight, opposing_pawn;
+    if (state._current_player == Player::WHITE) {
+        opposing_queen = Piece::BLACK_QUEEN;
+        opposing_rook = Piece::BLACK_ROOK;
+        opposing_bishop = Piece::BLACK_BISHOP;
+        opposing_knight = Piece::BLACK_KNIGHT;
+        opposing_pawn = Piece::BLACK_PAWN;
+    } else {
+        opposing_queen = Piece::WHITE_QUEEN;
+        opposing_rook = Piece::WHITE_ROOK;
+        opposing_bishop = Piece::WHITE_BISHOP;
+        opposing_knight = Piece::WHITE_KNIGHT;
+        opposing_pawn = Piece::WHITE_PAWN;
+    }
+
+    // Use brute force to systematically work outward to check for attacks
+
+    // First check all the knights
+    if (isSquareUnderAttackByKnight(rank, file, state)) {
+        return true;
+    }
+
+    // Then check all the rooks and queens horizontally and vertically
+    if (isSquareUnderAttackByRookOrQueen(rank, file, state)) {
+        return true;
+    }
+
+    // Then check all the bishops and queens diagonally
+    if (isSquareUnderAttackByBishopOrQueen(rank, file, state)) {
+        return true;
+    }
+
+    // Then check for pawn attacks
+    if (isSquareUnderAttackByPawn(rank, file, state)) {
+        return true;
+    }
+
+    // Finally check for king attacks
+    if (isSquareUnderAttackByKing(rank, file, state)) {
+        return true;
+    }
+
+    return false;
+}
+
+bool
+Rules::isSquareUnderAttackByKnight(int8_t rank, int8_t file, const GameState& state)
+{
+    Piece opposing_knight;
+    if (state._current_player == Player::WHITE) {
+        opposing_knight = Piece::BLACK_KNIGHT;
+    } else {
+        opposing_knight = Piece::WHITE_KNIGHT;
+    }
+
+    // Check all knight positions
+
+    // Check for knight at 1 o'clock
+    if (rank + 2 <= 8 && file + 1 <= 8) {
+        if (state.board[rank+2-1][file+1-1].piece == opposing_knight) {
+            return true;
+        }
+    }
+    // Check for knight at 2 o'clock
+    if (rank + 1 <= 8 && file + 2 <= 8) {
+        if (state.board[rank+1-1][file+2-1].piece == opposing_knight) {
+            return true;
+        }
+    }
+    // Check for knight at 4 o'clock
+    if (rank - 1 >= 1 && file + 2 <= 8) {
+        if (state.board[rank-1-1][file+2-1].piece == opposing_knight) {
+            return true;
+        }
+    }
+    // Check for knight at 5 o'clock
+    if (rank - 2 >= 1 && file + 1 <= 8) {
+        if (state.board[rank-2-1][file+1-1].piece == opposing_knight) {
+            return true;
+        }
+    }
+    // Check for knight at 7 o'clock
+    if (rank - 2 >= 1 && file - 1 >= 1) {
+        if (state.board[rank-2-1][file-1-1].piece == opposing_knight) {
+            return true;
+        }
+    }
+    // Check for knight at 8 o'clock
+    if (rank - 1 >= 1 && file - 2 >= 1) {
+        if (state.board[rank-1-1][file-2-1].piece == opposing_knight) {
+            return true;
+        }
+    }
+    // Check for knight at 10 o'clock
+    if (rank + 1 <= 8 && file - 2 >= 1) {
+        if (state.board[rank+1-1][file-2-1].piece == opposing_knight) {
+            return true;
+        }
+    }
+    // Check for knight at 11 o'clock
+    if (rank + 2 <= 8 && file - 1 >= 1) {
+        if (state.board[rank+2-1][file-1-1].piece == opposing_knight) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool
+Rules::isSquareUnderAttackByRookOrQueen(int8_t rank, int8_t file, const GameState& state)
+{
+    Piece opposing_rook, opposing_queen;
+    if (state._current_player == Player::WHITE) {
+        opposing_rook = Piece::BLACK_ROOK;
+        opposing_queen = Piece::BLACK_QUEEN;
+    } else {
+        opposing_rook = Piece::WHITE_ROOK;
+        opposing_queen = Piece::WHITE_QUEEN;
+    }
+
+    // Check in the +x direction
+    for (int8_t f = file + 1; f <= 8; f++) {
+        Piece piece = state.board[rank-1][f-1].piece;
+        if (piece == opposing_rook || piece == opposing_queen) {
+            return true;
+        }
+        if (piece != Piece::EMPTY) {
+            break; // Path blocked
+        }
+    }
+
+    // Check in the -x direction
+    for (int8_t f = file - 1; f >= 1; f--) {
+        Piece piece = state.board[rank-1][f-1].piece;
+        if (piece == opposing_rook || piece == opposing_queen) {
+            return true;
+        }
+        if (piece != Piece::EMPTY) {
+            break; // Path blocked
+        }
+    }
+
+    // Check in the +y direction
+    for (int8_t r = rank + 1; r <= 8; r++) {
+        Piece piece = state.board[r-1][file-1].piece;
+        if (piece == opposing_rook || piece == opposing_queen) {
+            return true;
+        }
+        if (piece != Piece::EMPTY) {
+            break; // Path blocked
+        }
+    }
+
+    // Check in the -y direction
+    for (int8_t r = rank - 1; r >= 1; r--) {
+        Piece piece = state.board[r-1][file-1].piece;
+        if (piece == opposing_rook || piece == opposing_queen) {
+            return true;
+        }
+        if (piece != Piece::EMPTY) {
+            break; // Path blocked
+        }
+    }
+
+    return false;
+}
+
+
+bool
+Rules::isSquareUnderAttackByBishopOrQueen(int8_t rank, int8_t file, const GameState& state)
+{
+    Piece opposing_bishop, opposing_queen;
+    if (state._current_player == Player::WHITE) {
+        opposing_bishop = Piece::BLACK_BISHOP;
+        opposing_queen = Piece::BLACK_QUEEN;
+    } else {
+        opposing_bishop = Piece::WHITE_BISHOP;
+        opposing_queen = Piece::WHITE_QUEEN;
+    }
+
+    // Check the +x, +y diagonal
+    for (int8_t r = rank + 1, f = file + 1; r <= 8 && f <= 8; r++, f++) {
+        Piece piece = state.board[r-1][f-1].piece;
+        if (piece == opposing_bishop || piece == opposing_queen) {
+            return true;
+        }
+        if (piece != Piece::EMPTY) {
+            break; // Path blocked
+        }
+    }
+
+    // Check the +x, -y diagonal
+    for (int8_t r = rank + 1, f = file - 1; r <= 8 && f >= 1; r++, f--) {
+        Piece piece = state.board[r-1][f-1].piece;
+        if (piece == opposing_bishop || piece == opposing_queen) {
+            return true;
+        }
+        if (piece != Piece::EMPTY) {
+            break; // Path blocked
+        }
+    }
+
+    // Check the -x, -y diagonal
+    for (int8_t r = rank - 1, f = file - 1; r >= 1 && f >= 1; r--, f--) {
+        Piece piece = state.board[r-1][f-1].piece;
+        if (piece == opposing_bishop || piece == opposing_queen) {
+            return true;
+        }
+        if (piece != Piece::EMPTY) {
+            break; // Path blocked
+        }
+    }
+
+
+    // Check the -x, +y diagonal
+    for (int8_t r = rank - 1, f = file + 1; r >= 1 && f <= 8; r--, f++) {
+        Piece piece = state.board[r-1][f-1].piece;
+        if (piece == opposing_bishop || piece == opposing_queen) {
+            return true;
+        }
+        if (piece != Piece::EMPTY) {
+            break; // Path blocked
+        }
+    }
+
+    return false;
+}
+
+bool
+Rules::isSquareUnderAttackByPawn(int8_t rank, int8_t file, const GameState& state)
+{
+    int8_t attack_direction;
+    Piece opposing_pawn;
+    if (state._current_player == Player::WHITE) {
+        opposing_pawn = Piece::BLACK_PAWN;
+        attack_direction = 1;  // Black pawns attack from higher ranks
+    } else {
+        opposing_pawn = Piece::WHITE_PAWN;
+        attack_direction = -1; // White pawns attack from lower ranks
+    }
+
+    int8_t pawn_rank = rank + attack_direction;
+    
+    // Check bounds and diagonals where opposing pawns could be
+    if (pawn_rank >= 1 && pawn_rank <= 8) {
+        // Left diagonal
+        if (file - 1 >= 1) {
+            if (state.board[pawn_rank-1][file-1-1].piece == opposing_pawn) {
+                return true;
+            }
+        }
+        // Right diagonal
+        if (file + 1 <= 8) {
+            if (state.board[pawn_rank-1][file+1-1].piece == opposing_pawn) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool
+Rules::isSquareUnderAttackByKing(int8_t rank, int8_t file, const GameState& state)
+{
+    Piece opposing_king;
+    if (state._current_player == Player::WHITE) {
+        opposing_king = Piece::BLACK_KING;
+    } else {
+        opposing_king = Piece::WHITE_KING;
+    }
+
+    // Check all 8 squares around the given square for an opposing king
+    for (int8_t r = -1; r <= 1; r++) {
+        for (int8_t f = -1; f <= 1; f++) {
+
+            if (r == 0 && f == 0) continue; // Skip the center square
+
+            int8_t check_rank = rank + r;
+            int8_t check_file = file + f;
+            
+            // Check bounds
+            if (check_rank >= 1 && check_rank <= 8 && check_file >= 1 && check_file <= 8) {
+                if (state.board[check_rank-1][check_file-1].piece == opposing_king) {
+                    return true;
+                }
+            }
+        }
+    }
+
     return false;
 }
 
