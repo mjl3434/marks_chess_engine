@@ -27,6 +27,7 @@ public:
     bool isDrawByInsufficientMaterial(const GameState& state);
     bool isDrawByFiftyMoveRule(const GameState& state) const;
     bool isSquareOccupied(int8_t rank, int8_t file, const GameState& state);
+    bool isSquareOccupiedBy(int8_t rank, int8_t file, const GameState& state, Player player);
     bool isSquareUnderAttack(int8_t rank, int8_t file, const GameState& state);
     bool isSquareUnderAttackByKnight(int8_t rank, int8_t file, const GameState& state);
     bool isSquareUnderAttackByRookOrQueen(int8_t rank, int8_t file, const GameState& state);

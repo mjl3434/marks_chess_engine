@@ -86,6 +86,8 @@ Rules::isValidPawnMove(const Move& move, const GameState& game_state)
     int8_t forward_one_square = move.piece == Piece::WHITE_PAWN ? 1 : -1;
     int8_t forward_two_squares = move.piece == Piece::WHITE_PAWN ? 2 : -2;
     int8_t pawn_starting_rank = move.piece == Piece::WHITE_PAWN ? 2 : 7;
+    int8_t en_passant_source_rank = move.piece == Piece::WHITE_PAWN ? 5 : 4;
+    Player opponent = move.piece == Piece::WHITE_PAWN ? Player::BLACK : Player::WHITE;
 
     // The pawn is a complicated piece. Valid pawn moves are:
     // 1. Moving one square forward to an unoccupied square
@@ -117,10 +119,14 @@ Rules::isValidPawnMove(const Move& move, const GameState& game_state)
          move.destination_file == move.source_file + 1)) {
 
         // If they're moving into an occupied square, it's a capture
-        if (isSquareOccupied(move.destination_rank, move.destination_file, game_state) ||
-            (game_state._two_square_pawn_push_just_occured &&
-             move.destination_rank == game_state._en_passant_target_square_rank &&
-             move.destination_file == game_state._en_passant_target_square_file)) {
+        if (isSquareOccupiedBy(move.destination_rank, move.destination_file, game_state, opponent)) {
+            return true;
+        }
+
+        if (move.source_rank == en_passant_source_rank &&
+            game_state._two_square_pawn_push_just_occured &&
+            move.destination_rank == game_state._en_passant_target_square_rank &&
+            move.destination_file == game_state._en_passant_target_square_file) {
             // If the opponent's pawn just moved two squares forward, and they're
             // moving into the en passant target square, it's a valid en passant capture
             return true;
@@ -486,26 +492,25 @@ Rules::isSquareOccupied(int8_t rank, int8_t file, const GameState& game_state)
 }
 
 bool
+Rules::isSquareOccupiedBy(int8_t rank, int8_t file, const GameState& state, Player player)
+{
+    // Check if the square is occupied by a piece of the specified player
+    Piece piece = state.board[rank-1][file-1].piece;
+    if (player == Player::WHITE) {
+        return piece == Piece::WHITE_PAWN || piece == Piece::WHITE_BISHOP ||
+               piece == Piece::WHITE_ROOK || piece == Piece::WHITE_KNIGHT ||
+               piece == Piece::WHITE_QUEEN || piece == Piece::WHITE_KING;
+    } else {
+        return piece == Piece::BLACK_PAWN || piece == Piece::BLACK_BISHOP ||
+               piece == Piece::BLACK_ROOK || piece == Piece::BLACK_KNIGHT ||
+               piece == Piece::BLACK_QUEEN || piece == Piece::BLACK_KING;
+    }
+    return false;
+}
+
+bool
 Rules::isSquareUnderAttack(int8_t rank, int8_t file, const GameState& state)
 {
-    uint8_t total_attack = 0;
-    Piece opposing_queen, opposing_rook, opposing_bishop, opposing_knight, opposing_pawn;
-    if (state._current_player == Player::WHITE) {
-        opposing_queen = Piece::BLACK_QUEEN;
-        opposing_rook = Piece::BLACK_ROOK;
-        opposing_bishop = Piece::BLACK_BISHOP;
-        opposing_knight = Piece::BLACK_KNIGHT;
-        opposing_pawn = Piece::BLACK_PAWN;
-    } else {
-        opposing_queen = Piece::WHITE_QUEEN;
-        opposing_rook = Piece::WHITE_ROOK;
-        opposing_bishop = Piece::WHITE_BISHOP;
-        opposing_knight = Piece::WHITE_KNIGHT;
-        opposing_pawn = Piece::WHITE_PAWN;
-    }
-
-    // Use brute force to systematically work outward to check for attacks
-
     // First check all the knights
     if (isSquareUnderAttackByKnight(rank, file, state)) {
         return true;
@@ -825,11 +830,13 @@ Rules::isKingInCheckAfterMove(const Move& move, const GameState& game_state)
     Piece king = copy._current_player == Player::WHITE ? Piece::BLACK_KING : Piece::WHITE_KING;
 
     // Find the previous player's king
-    for (int8_t r = 1, f = 1; r <= 8 && f <= 8; r++, f++) {
-        if (copy.board[r-1][f-1].piece == king) {
-            // Check if the king is being attacked after moving there
-            if (isSquareUnderAttack(r, f, copy)) {
-                return true;
+    for (int8_t r = 1; r <= 8; r++) {
+        for (int8_t f = 1; f <= 8; f++) {
+            if (copy.board[r-1][f-1].piece == king) {
+                // Check if the king is being attacked after moving there
+                if (isSquareUnderAttack(r, f, copy)) {
+                    return true;
+                }
             }
         }
     }
