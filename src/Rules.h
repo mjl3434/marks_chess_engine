@@ -28,6 +28,11 @@ public:
     bool isDrawByFiftyMoveRule(const GameState& state) const;
     bool isSquareOccupied(int8_t rank, int8_t file, const GameState& state);
     bool isSquareUnderAttack(int8_t rank, int8_t file, const GameState& state);
+    bool isSquareUnderAttackByKnight(int8_t rank, int8_t file, const GameState& state);
+    bool isSquareUnderAttackByRookOrQueen(int8_t rank, int8_t file, const GameState& state);
+    bool isSquareUnderAttackByBishopOrQueen(int8_t rank, int8_t file, const GameState& state);
+    bool isSquareUnderAttackByPawn(int8_t rank, int8_t file, const GameState& state);
+    bool isSquareUnderAttackByKing(int8_t rank, int8_t file, const GameState& state);
     bool isKingSideCastle(const Move& move);
     bool isQueenSideCastle(const Move& move);
     bool isSameColor(const Piece& piece1, const Piece& piece2);
