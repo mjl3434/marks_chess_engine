@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <iostream>
 #include <list>
+#include <random>
 #include <regex>
 #include <sstream>
 #include <unordered_set>
@@ -299,6 +300,13 @@ int32_t
 ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repetition_table) const
 {
     // FIXME: Implement this
+    // Generate a random number between INT32_MIN and INT32_MAX
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    static std::uniform_int_distribution<int32_t> dist(INT32_MIN, INT32_MAX);
+
+    return dist(gen);
+
 
     // For now, return a random score
 
@@ -314,7 +322,7 @@ ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repe
     // Subtract points that are not guarded by other pieces
 
 
-    return 0;
+    //return 0;
 }
 
 // Note: This must be called with a valid FEN string since no error checking is done
