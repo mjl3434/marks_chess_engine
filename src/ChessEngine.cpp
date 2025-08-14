@@ -42,6 +42,8 @@ ChessEngine::spin()
         // Block until a command is available
         std::unique_ptr<UCICommand> command = command_queue.dequeue();
 
+        // FIXME: Add these!
+
         // NOTE: In all long-running functions we need to periodically check the non-blocking call
         //
         //     std::optional<std::unique_ptr<UCICommand>> command = command_queue.try_dequeue();
