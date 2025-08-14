@@ -186,7 +186,7 @@ ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_c
     int max_depth = go_command.max_depth > 0 ? go_command.max_depth : DEFAULT_MAX_SEARCH_DEPTH;
 
     // Generate all legal moves
-    std::list<Move> legal_moves = generateLegalMoves(starting_state);
+    std::list<Move> legal_moves = _game->_rules.generateLegalMovesForCurrentPlayer(starting_state);
 
     for (const Move& move : legal_moves) {
 
@@ -238,7 +238,7 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
         return evaluatePosition(game_state, repetition_table);
     }
 
-    std::list<Move> moves = generateLegalMoves(game_state);
+    std::list<Move> moves = _game->_rules.generateLegalMovesForCurrentPlayer(game_state);
 
     if (maximizing) {
         int32_t max_score = INT32_MIN;
@@ -293,25 +293,25 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
     }
 }
 
-std::list<Move>
-ChessEngine::generateLegalMoves(const GameState& game_state) const
-{
-    std::list<Move> legal_moves;
-
-    // FIXME: Implement this
-
-    // For each pice on the board
-        // For each square that pice can move to
-            // If the move is legal
-                // Add the move to the list of legal moves
-
-    return legal_moves;
-}
-
 int32_t
 ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repetition_table) const
 {
     // FIXME: Implement this
+
+    // For now, return a random score
+
+    // First cut:
+
+    // Add up the value of all the remaining material on the board for each player
+    // and calculate the difference.
+
+    // Subtract points for squares under attack
+    
+    // Subtract points for pinned pieces
+
+    // Subtract points that are not guarded by other pieces
+
+
     return 0;
 }
 
