@@ -60,6 +60,7 @@ void
 ChessEngine::doDebugCommand(DebugCommand& command)
 {
     _debug_enabled = command.debug_enabled;
+    debug_enabled = _debug_enabled;
 }
 
 void
@@ -76,6 +77,11 @@ ChessEngine::doGoCommand(GoCommand& command)
     const GameState& game_state = _game->getLatestGameState();
 
     SearchResult result = findBestMove(game_state, command);
+    debugLog("Best move found! score = %d, depth_searched = %d, nodes_searched = %d\n"
+             "move start = [%d,%d] end = [%d,%d]\n",
+             result.score, result.depth_searched, result.nodes_searched,
+             result.best_move.source_rank, result.best_move.source_file,
+             result.best_move.destination_rank, result.best_move.destination_file);
 }
 
 void
@@ -96,9 +102,9 @@ ChessEngine::doPonderHitCommand(PonderHitCommand& command)
 void
 ChessEngine::doPositionCommand(PositionCommand& command)
 {
-    GameState initial_game_state;
+    _game->_game_state.push_back(GameState()); // Start with a fresh game state
 
-    setUpBoardFromFen(command.fen, initial_game_state);
+    setUpBoardFromFen(command.fen, _game->_game_state.back());
 
     while (command.moves.size() > 0) {
         Move current = command.moves.front();
@@ -135,8 +141,8 @@ ChessEngine::doStopCommand(StopCommand& command)
 void
 ChessEngine::doUciCommand(UciCommand& command)
 {
-    std::cout << "id Name" << engine_name << "\n";
-    std::cout << "id Author" << author << "\n";
+    std::cout << "id Name " << engine_name << "\n";
+    std::cout << "id Author " << author << "\n";
 
     /*
   1 <Stockfish(0): info string Using 8 threads
@@ -178,7 +184,8 @@ ChessEngine::doUciNewGameCommand(UciNewGameCommand& command)
     // Clear any internal state left over from a previous game
     _game.reset();
 
-    // Don't set up the board until we get a "position" command
+    // Make a new game, but don't set up the board until we get a "position" command
+    _game = std::make_unique<ChessGame>();
 }
 
 SearchResult
@@ -191,21 +198,25 @@ ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_c
     // Generate all legal moves
     std::list<Move> legal_moves = _game->_rules.generateLegalMovesForCurrentPlayer(starting_state);
 
+    int i = 1;
     for (const Move& move : legal_moves) {
 
         // Temporarily make the move on a copy
+        debugLog("%s Trying legal move number %d\n", __FUNCTION__, i++);
         GameState search_state = starting_state;
         auto repetition_table = _game->getGamePositions();
-
         _game->tryMoveOnStateCopy(move, search_state);
 
         // Add the new position to the repetition table
+        debugLog("%s Adding current position to repetition talbe\n", __FUNCTION__);
         _game->addToRepetitionTable(search_state._game_state_hash, repetition_table);
 
         // Search deeper with alpha-beta
+        debugLog("%s Starting minmax\n", __FUNCTION__);
         int32_t score = minimax(search_state, repetition_table, max_depth - 1, INT32_MIN, INT32_MAX, false);
 
         // Remove the position from the repetition table (backtrack)
+        debugLog("%s Removing position from repetition talbe\n", __FUNCTION__);
         _game->removeFromRepetitionTable(search_state._game_state_hash, repetition_table);
 
         if (score > result.score) {
@@ -223,6 +234,7 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
 {
     Rules& rules = _game->_rules;
 
+    debugLog("%s: About to check for game endings\n", __FUNCTION__);
     GameResult result = rules.checkForGameEndings(game_state, repetition_table);
 
     if (result == GameResult::CHECKMATE) {
@@ -237,16 +249,19 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
                result == GameResult::INSUFFICIENT_MATERIAL) {
         return 0;   // Draw
     } else if (result == GameResult::NONE || depth == 0) {
-        // Base case: reached search depth or terminal position
+        // Search reached max depth
+        debugLog("%s: About to evaluate max depth position\n", __FUNCTION__);
         return evaluatePosition(game_state, repetition_table);
     }
 
+    debugLog("%s: Getting a big list of legal moves\n", __FUNCTION__);
     std::list<Move> moves = _game->_rules.generateLegalMovesForCurrentPlayer(game_state);
 
     if (maximizing) {
         int32_t max_score = INT32_MIN;
         for (const Move& move : moves) {
 
+            debugLog("%s: Maximizing trying move\n", __FUNCTION__);
             // Temporarily make the move on a copy 
             GameState new_state = game_state;
             _game->tryMoveOnStateCopy(move, new_state);
@@ -255,6 +270,7 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
             _game->addToRepetitionTable(new_state._game_state_hash, repetition_table);
 
             // Keep recursing
+            debugLog("%s: Maximiaing recursing depth = %d\n", __FUNCTION__, depth);
             int score = minimax(new_state, repetition_table, depth - 1, alpha, beta, false);
 
             // Remove the position from the repetition table (backtrack)
@@ -272,6 +288,7 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
         int32_t min_score = INT32_MAX;
         for (const Move& move : moves) {
 
+            debugLog("%s: Minimizing trying move\n", __FUNCTION__);
             // Temporarily make the move on a copy 
             GameState new_state = game_state;  // Copy
             _game->tryMoveOnStateCopy(move, new_state);
@@ -280,6 +297,7 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
             _game->addToRepetitionTable(new_state._game_state_hash, repetition_table);
 
             // Keep recursing
+            debugLog("%s: Minimizing recursing depth = %d\n", __FUNCTION__, depth);
             int score = minimax(new_state, repetition_table, depth - 1, alpha, beta, true);
 
             // Remove the position from the repetition table (backtrack)
@@ -296,33 +314,105 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
     }
 }
 
+/**
+ * @brief Evaluate the given position and return a score
+ * 
+ * This method attempts to evaluate each player's position and return a score
+ * that indicates who's winning. A larger positive score means White is
+ * winning, a larger negative score means Black is winning.
+ */
 int32_t
 ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repetition_table) const
 {
-    // FIXME: Implement this
+    // 
     // Generate a random number between INT32_MIN and INT32_MAX
     static std::random_device rd;
     static std::mt19937 gen(rd());
     static std::uniform_int_distribution<int32_t> dist(INT32_MIN, INT32_MAX);
-
     return dist(gen);
 
+    int32_t result = 0;
 
-    // For now, return a random score
+    // Simple logic for now just calculate the material score of each player
+    // and return the difference.
+    for (int r = 1; r <= 8; r++) {
+        for (int f = 1; f <= 8; f++) {
+            Piece piece = game_state.board[r-1][f-1].piece;
+            if (piece == Piece::EMPTY) {
+                continue;
+            }
+            // Count the material score
+            if (_game->_rules.isWhite(piece)) {
+                result += getPieceValue(piece);
+            } else {
+                result -= getPieceValue(piece);
+            }
+        }
+    }
 
-    // First cut:
-
-    // Add up the value of all the remaining material on the board for each player
-    // and calculate the difference.
-
-    // Subtract points for squares under attack
-    
-    // Subtract points for pinned pieces
-
-    // Subtract points that are not guarded by other pieces
+    return result * 1000000; // Normalize the score to a larger range
 
 
-    //return 0;
+    // The math here is generally based on the concept of counting the material
+    // remaining on the board and assigning a score based on that. However since
+    // we also want to account for positional advantages, we also need to take
+    // into consideration several other variable and give them a score. A pinned
+    // queen for example would not be as valuable as a queen that can move
+    // freely. Likewise, a bishop that's defended and attacking several squares
+    // is more valuable than a bishop that's blocked by its own pawns.
+
+    // In order to account for the nuances of position and take advantage for
+    // the large range from INT32_MIN to INT32_MAX, which covers from approx.
+    // -2 billion to +2 billion, we can multiple the standard material scores
+    // by 1,000,000
+
+    // 8 Pawns   = 8 * 1 = 8
+    // 2 Knights = 2 * 3 = 6
+    // 2 Bishops = 2 * 3 = 6 
+    // 2 Rooks   = 2 * 5 = 10
+    // 1 Queen   = 1 * 9 = 18
+    // Total             = 48
+    // Normalized to 1,000,000 = 48,000,000
+
+    // This gives us tons of variablity to add or subtract from the score to
+    // account for the positional advantages mentioned above, while still
+    // easil staying within the range of INT32_MIN to INT32_MAX.
+
+    // For each piece determine:
+    // - Is it defended, and by how many pieces?
+    // - How many squares can it attack?
+    // - Is it pinned?
+    // - Is it blocked by its own pieces?
+    // - If it's a knight, is it on the edge of the board?
+    // - If it's a bishop, is it on a long diagonal?
+
+}
+
+int32_t
+ChessEngine::getPieceValue(const Piece& piece) const
+{
+    switch (piece)
+    {
+        case Piece::WHITE_PAWN:
+        case Piece::BLACK_PAWN:
+            return 1;
+        case Piece::WHITE_BISHOP:
+        case Piece::BLACK_BISHOP:
+        case Piece::WHITE_KNIGHT:
+        case Piece::BLACK_KNIGHT:
+            return 3;
+        case Piece::WHITE_ROOK:
+        case Piece::BLACK_ROOK:
+            return 5;
+        case Piece::WHITE_QUEEN:
+        case Piece::BLACK_QUEEN:
+            return 9;
+        case Piece::WHITE_KING:
+        case Piece::BLACK_KING:
+            return INT32_MAX;
+        default:
+            return 0;
+    }
 }
 
 // Note: This must be called with a valid FEN string since no error checking is done
@@ -413,6 +503,7 @@ ChessEngine::setUpBoardFromFen(const std::string& fen, GameState& game_state) co
                 break;
             case '/':
                 row -= 1;
+                column = 1; // Reset column to 1 for the next row
                 break;
         }
     }

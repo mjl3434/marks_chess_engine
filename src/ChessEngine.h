@@ -50,6 +50,7 @@ private:
     int32_t minimax(GameState game_state, position_hash_t& repetition_table,
             int depth, int alpha,int beta, bool maximizing) const;
     int32_t evaluatePosition(const GameState& game_state, position_hash_t& repetition_table) const;
+    int32_t getPieceValue(const Piece& piece) const;
 
     // Helper functions
     void setUpBoardFromFen(const std::string&, GameState& game_state) const;

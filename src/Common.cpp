@@ -48,3 +48,16 @@ Move::Move()
       promotion_chosen(Promotion::NONE)
 {
 }
+
+bool debug_enabled = false;
+
+void debugLog(const char* format, ...)
+{
+    if (!debug_enabled)
+        return;
+
+    va_list args;
+    va_start(args, format);
+    vprintf(format, args);
+    va_end(args);
+}

@@ -28,10 +28,10 @@ public:
     Piece getPieceAtDestinationSquare(const Move&) const;
 
     Rules _rules;
+    std::vector<GameState> _game_state;
 
 private:
 
     std::unordered_map<std::size_t, int> _unique_positions;
-    std::vector<GameState> _game_state;
     std::vector<Move> _moves;
 };

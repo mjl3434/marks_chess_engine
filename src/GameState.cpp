@@ -5,13 +5,13 @@
 Piece
 GameState::getPieceAtSourceSquare(const Move& move) const
 {
-    return board[move.source_rank][move.source_file].piece;
+    return board[move.source_rank-1][move.source_file-1].piece;
 }
 
 Piece
 GameState::getPieceAtDestinationSquare(const Move& move) const
 {
-    return board[move.destination_rank][move.destination_file].piece;
+    return board[move.destination_rank-1][move.destination_file-1].piece;
 }
 
 /**
@@ -85,9 +85,9 @@ GameState::setGameStateHash()
     std::size_t seed = 0;
 
     // Hash the board
-    for (int rank = 0; rank < 8; rank++) {
-        for (int file = 0; file < 8; file++) {
-            hash_combine(seed, static_cast<uint32_t>(board[rank][file].piece));
+    for (int rank = 1; rank <= 8; rank++) {
+        for (int file = 1; file <= 8; file++) {
+            hash_combine(seed, static_cast<uint32_t>(board[rank-1][file-1].piece));
         }
     }
 
