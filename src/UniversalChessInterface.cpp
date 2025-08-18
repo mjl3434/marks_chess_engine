@@ -250,6 +250,11 @@ UniversalChessInterface::isValidAlgebraicNotation(const std::string& input)
              move[4] == 'n' || move[4] == 'b')) {
             return true;
         }
+
+        // Regular move
+        if (move.length() == 4) {
+            return true;
+        }
     }
     return false;
 }
@@ -297,7 +302,7 @@ UniversalChessInterface::getCommand(const std::string& input)
         case Keyword::DEBUG:
         {
             auto debug_command = std::make_unique<DebugCommand>(tokens);
-            if (!isValidDebugCommand(tokens, *debug_command)) {
+            if (isValidDebugCommand(tokens, *debug_command)) {
                 command_to_return = std::move(debug_command);
             } else {
                 return nullptr; // Invalid debug command
@@ -409,11 +414,11 @@ UniversalChessInterface::getCommand(const std::string& input)
 bool
 UniversalChessInterface::isValidDebugCommand(const std::list<std::string>& tokens, DebugCommand& debug_command)
 {
-    // The only token remaining should be "on" or "off"
-    if (tokens.size() != 1) {
+    // The only token after "debug" should be "on" or "off"
+    if (tokens.size() != 2) {
         return false;
     }
-    std::string value = tokens.front();
+    std::string value = tokens.back();
     toLower(value);
     if (value == "on") {
         debug_command.debug_enabled = true; 

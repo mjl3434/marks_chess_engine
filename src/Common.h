@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdarg>
+#include <cstdio>
 #include <string>
 #include <unordered_map>
 
@@ -71,3 +73,6 @@ public:
 
     // Note: Optionally include special flags about, castling, en passant, promotion
 };
+
+extern bool debug_enabled;
+void debugLog(const char* format, ...);

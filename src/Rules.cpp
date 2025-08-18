@@ -89,22 +89,22 @@ Rules::isDrawByInsufficientMaterial(const GameState& state) const
     uint8_t white_bishops_light = 0, white_bishops_dark = 0;
     uint8_t black_bishops_light = 0, black_bishops_dark = 0;
 
-    for (int rank = 0; rank < 8; ++rank) {
-        for (int file = 0; file < 8; ++file) {
-            Piece p = state.board[rank][file].piece;
-            int square_color = ((rank + 1) + (file + 1)) % 2; // 0 = light, 1 = dark (1-based)
+    for (int rank = 1; rank <= 8; ++rank) {
+        for (int file = 1; file <= 8; ++file) {
+            Piece p = state.board[rank-1][file-1].piece;
+            int square_color = (rank + file) % 2; // 0 = dark, 1 = light
             switch (p) {
                 case Piece::WHITE_BISHOP:
                 {
                     white_bishops++;
-                    if (square_color == 0) white_bishops_light++; 
+                    if (square_color == 1) white_bishops_light++; 
                     else white_bishops_dark++;
                     break;
                 }
                 case Piece::BLACK_BISHOP:
                 {
                     black_bishops++;
-                    if (square_color == 0) black_bishops_light++;
+                    if (square_color == 1) black_bishops_light++;
                     else black_bishops_dark++;
                     break;
                 }
@@ -152,12 +152,13 @@ bool
 Rules::isKingInCheck(const GameState& game_state) const
 {
     Piece king = game_state._current_player == Player::WHITE ? Piece::WHITE_KING : Piece::BLACK_KING;
+    Player opponent = game_state._current_player == Player::WHITE ? Player::BLACK : Player::WHITE;
 
     // First locate the current player's king
     for (int8_t r = 1; r <= 8; r++) {
         for (int8_t f = 1; f <= 8; f++) {
             if (game_state.board[r-1][f-1].piece == king) {
-                return isSquareUnderAttack(r, f, game_state);
+                return isSquareUnderAttackBy(r, f, game_state, opponent);
             }
         }
     }
@@ -168,18 +169,32 @@ bool
 Rules::isKingInCheckAfterMove(const Move& move, const GameState& game_state) const
 {
     GameState copy = game_state;
+    Player current_player_before_move;
+    Player opponent_before_move;
+    Piece king_before_move;
+
+    if (game_state._current_player == Player::WHITE) {
+        current_player_before_move = Player::WHITE;
+        opponent_before_move = Player::BLACK;
+        king_before_move = Piece::WHITE_KING;
+    } else {
+        current_player_before_move = Player::BLACK;
+        opponent_before_move = Player::WHITE;
+        king_before_move = Piece::BLACK_KING;
+    }
+
+    // Try the move on a copy of the game state
     parent_game.tryMoveOnStateCopy(move, copy);
 
-    // After we try the move, the current player is updated. This means we now want to check
-    // if the previous player's king is in check.
-    Piece king = copy._current_player == Player::WHITE ? Piece::BLACK_KING : Piece::WHITE_KING;
+    // After we try the move, the current player is updated, and players are reversed.
+    // Just ignore this and use the players and pieces from before the move.
 
     // Find the previous player's king
     for (int8_t r = 1; r <= 8; r++) {
         for (int8_t f = 1; f <= 8; f++) {
-            if (copy.board[r-1][f-1].piece == king) {
+            if (copy.board[r-1][f-1].piece == king_before_move) {
                 // Check if the king is being attacked after moving there
-                if (isSquareUnderAttack(r, f, copy)) {
+                if (isSquareUnderAttackBy(r, f, copy, opponent_before_move)) {
                     return true;
                 }
             }
@@ -325,30 +340,30 @@ Rules::isSquareOccupiedBy(int8_t rank, int8_t file, const GameState& state, Play
 }
 
 bool
-Rules::isSquareUnderAttack(int8_t rank, int8_t file, const GameState& state) const
+Rules::isSquareUnderAttackBy(int8_t rank, int8_t file, const GameState& state, Player opponent) const
 {
     // First check all the knights
-    if (isSquareUnderAttackByKnight(rank, file, state)) {
+    if (isSquareUnderAttackByKnight(rank, file, state, opponent)) {
         return true;
     }
 
     // Then check all the rooks and queens horizontally and vertically
-    if (isSquareUnderAttackByRookOrQueen(rank, file, state)) {
+    if (isSquareUnderAttackByRookOrQueen(rank, file, state, opponent)) {
         return true;
     }
 
     // Then check all the bishops and queens diagonally
-    if (isSquareUnderAttackByBishopOrQueen(rank, file, state)) {
+    if (isSquareUnderAttackByBishopOrQueen(rank, file, state, opponent)) {
         return true;
     }
 
     // Then check for pawn attacks
-    if (isSquareUnderAttackByPawn(rank, file, state)) {
+    if (isSquareUnderAttackByPawn(rank, file, state, opponent)) {
         return true;
     }
 
     // Finally check for king attacks
-    if (isSquareUnderAttackByKing(rank, file, state)) {
+    if (isSquareUnderAttackByKing(rank, file, state, opponent)) {
         return true;
     }
 
@@ -356,10 +371,11 @@ Rules::isSquareUnderAttack(int8_t rank, int8_t file, const GameState& state) con
 }
 
 bool
-Rules::isSquareUnderAttackByBishopOrQueen(int8_t rank, int8_t file, const GameState& state) const
+Rules::isSquareUnderAttackByBishopOrQueen(int8_t rank, int8_t file, const GameState& state,
+        Player opponent) const
 {
     Piece opposing_bishop, opposing_queen;
-    if (state._current_player == Player::WHITE) {
+    if (opponent == Player::BLACK) {
         opposing_bishop = Piece::BLACK_BISHOP;
         opposing_queen = Piece::BLACK_QUEEN;
     } else {
@@ -415,10 +431,11 @@ Rules::isSquareUnderAttackByBishopOrQueen(int8_t rank, int8_t file, const GameSt
 }
 
 bool
-Rules::isSquareUnderAttackByKing(int8_t rank, int8_t file, const GameState& state) const
+Rules::isSquareUnderAttackByKing(int8_t rank, int8_t file, const GameState& state,
+        Player opponent) const
 {
     Piece opposing_king;
-    if (state._current_player == Player::WHITE) {
+    if (opponent == Player::BLACK) {
         opposing_king = Piece::BLACK_KING;
     } else {
         opposing_king = Piece::WHITE_KING;
@@ -446,13 +463,14 @@ Rules::isSquareUnderAttackByKing(int8_t rank, int8_t file, const GameState& stat
 }
 
 bool
-Rules::isSquareUnderAttackByKnight(int8_t rank, int8_t file, const GameState& state) const
+Rules::isSquareUnderAttackByKnight(int8_t rank, int8_t file, const GameState& state,
+        Player opponent) const
 {
     Piece opposing_knight;
-    if (state._current_player == Player::WHITE) {
-        opposing_knight = Piece::BLACK_KNIGHT;
-    } else {
+    if (opponent == Player::WHITE) {
         opposing_knight = Piece::WHITE_KNIGHT;
+    } else {
+        opposing_knight = Piece::BLACK_KNIGHT;
     }
 
     // Check all knight positions
@@ -509,11 +527,12 @@ Rules::isSquareUnderAttackByKnight(int8_t rank, int8_t file, const GameState& st
 }
 
 bool
-Rules::isSquareUnderAttackByPawn(int8_t rank, int8_t file, const GameState& state) const
+Rules::isSquareUnderAttackByPawn(int8_t rank, int8_t file, const GameState& state,
+        Player opponent) const
 {
     int8_t attack_direction;
     Piece opposing_pawn;
-    if (state._current_player == Player::WHITE) {
+    if (opponent == Player::BLACK) {
         opposing_pawn = Piece::BLACK_PAWN;
         attack_direction = 1;  // Black pawns attack from higher ranks
     } else {
@@ -542,10 +561,11 @@ Rules::isSquareUnderAttackByPawn(int8_t rank, int8_t file, const GameState& stat
 }
 
 bool
-Rules::isSquareUnderAttackByRookOrQueen(int8_t rank, int8_t file, const GameState& state) const
+Rules::isSquareUnderAttackByRookOrQueen(int8_t rank, int8_t file, const GameState& state,
+        Player opponent) const
 {
     Piece opposing_rook, opposing_queen;
-    if (state._current_player == Player::WHITE) {
+    if (opponent == Player::BLACK) {
         opposing_rook = Piece::BLACK_ROOK;
         opposing_queen = Piece::BLACK_QUEEN;
     } else {
@@ -665,6 +685,7 @@ Rules::isValidKingMove(const Move& move, const GameState& game_state) const
     bool is_kingside_castle = isKingSideCastle(move);
     bool is_queenside_castle = isQueenSideCastle(move);
     bool is_castling = is_kingside_castle || is_queenside_castle;
+    Player opponent = game_state._current_player == Player::WHITE ? Player::BLACK : Player::WHITE;  
 
     // The King is complicated. He can move one square in any direction. He can
     // move to an empty square, or can capture, he can also castle. He may never
@@ -717,9 +738,9 @@ Rules::isValidKingMove(const Move& move, const GameState& game_state) const
                 return false;
             }
             // Check conditions 4 and 5: king not in check and doesn't move through check
-            if (isSquareUnderAttack(king_rank, 5, game_state) || // King currently in check
-                isSquareUnderAttack(king_rank, 6, game_state) || // f-file under attack
-                isSquareUnderAttack(king_rank, 7, game_state)) { // g-file under attack
+            if (isSquareUnderAttackBy(king_rank, 5, game_state, opponent) || // King currently in check
+                isSquareUnderAttackBy(king_rank, 6, game_state, opponent) || // f-file under attack
+                isSquareUnderAttackBy(king_rank, 7, game_state, opponent)) { // g-file under attack
                 return false;
             }
         } else if (is_queenside_castle) {
@@ -736,9 +757,9 @@ Rules::isValidKingMove(const Move& move, const GameState& game_state) const
                 return false;
             }
             // Check conditions 4 and 5: king not in check and doesn't move through check
-            if (isSquareUnderAttack(king_rank, 5, game_state) || // King currently in check
-                isSquareUnderAttack(king_rank, 4, game_state) || // d-file under attack
-                isSquareUnderAttack(king_rank, 3, game_state)) { // c-file under attack
+            if (isSquareUnderAttackBy(king_rank, 5, game_state, opponent) || // King currently in check
+                isSquareUnderAttackBy(king_rank, 4, game_state, opponent) || // d-file under attack
+                isSquareUnderAttackBy(king_rank, 3, game_state, opponent)) { // c-file under attack
                 return false;
             }
         }
@@ -838,7 +859,6 @@ Rules::isValidPawnMove(const Move& move, const GameState& game_state) const
             return true;
         }
     }
-
     return false;
 }
 
@@ -934,11 +954,14 @@ Rules::generateLegalMovesForCurrentPlayer(const GameState& game_state) const
                     generateLegalMovesForPieceAt(r, f, game_state, current_piece);
 
             // And add it to the larger list
-            legal_moves.insert(legal_moves.end(), legal_moves_for_piece.begin(),
+            if (!legal_moves_for_piece.empty()) {
+                legal_moves.insert(legal_moves.end(), legal_moves_for_piece.begin(),
                     legal_moves_for_piece.end());
+            }
+
         }
     }
-
+    debugLog("returning legal moves of size %zu\n", legal_moves.size());
     return legal_moves;
 }
 
@@ -1013,7 +1036,7 @@ Rules::generatePossibleMovesForPawnAt(uint8_t rank, uint8_t file,
     }
 
     // Forward one square
-    uint8_t forward_one_rank = rank + direction;
+    int8_t forward_one_rank = rank + direction;
     if (forward_one_rank >= 1 && forward_one_rank <= 8) {
         if (!isSquareOccupied(forward_one_rank, file, game_state)) {
             Move m;
@@ -1028,7 +1051,7 @@ Rules::generatePossibleMovesForPawnAt(uint8_t rank, uint8_t file,
 
     // Forward two squares from starting position
     if (rank == start_rank) {
-        uint8_t forward_two_ranks = rank + 2 * direction;
+        int8_t forward_two_ranks = rank + 2 * direction;
         if (!isSquareOccupied(forward_one_rank, file, game_state) &&
             !isSquareOccupied(forward_two_ranks, file, game_state)) {
             Move m2;
@@ -1043,7 +1066,7 @@ Rules::generatePossibleMovesForPawnAt(uint8_t rank, uint8_t file,
 
     // Captures (diagonal left and right)
     for (int8_t df = -1; df <= 1; df += 2) {
-        uint8_t dest_file = file + df;
+        int8_t dest_file = file + df;
         if (forward_one_rank >= 1 && forward_one_rank <= 8 && dest_file >= 1 && dest_file <= 8) {
             if (isSquareOccupiedBy(forward_one_rank, dest_file, game_state, opponent)) {
                 Move m;
@@ -1062,7 +1085,7 @@ Rules::generatePossibleMovesForPawnAt(uint8_t rank, uint8_t file,
         // Only one en passant target square exists, check that square
         if (forward_one_rank == game_state._en_passant_target_square_rank &&
             std::abs(file - game_state._en_passant_target_square_file) == 1) {
-            uint8_t dest_file = game_state._en_passant_target_square_file;
+            int8_t dest_file = game_state._en_passant_target_square_file;
             Move m;
             m.piece = piece;
             m.source_rank = rank;
