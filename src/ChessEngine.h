@@ -46,12 +46,13 @@ private:
     void spin(void);
 
     // Main implementation functions
-    SearchResult findBestMove(const GameState& game_state, const GoCommand& go_command) const;
+    SearchResult findBestMove(const GameState& game_state, const GoCommand& go_command);
     void printBestMove(const SearchResult& result) const;
-    int32_t minimax(GameState game_state, position_hash_t& repetition_table,
-            int depth, int alpha,int beta, bool maximizing) const;
+    int32_t minmax(GameState game_state, position_hash_t& repetition_table,
+            int depth, int alpha,int beta, bool maximizing);
     int32_t evaluatePosition(const GameState& game_state, position_hash_t& repetition_table) const;
     int32_t getPieceValue(const Piece& piece) const;
+    void handleAnyQuickCommands(void);
 
     // Helper functions
     void setUpBoardFromFen(const std::string&, GameState& game_state) const;

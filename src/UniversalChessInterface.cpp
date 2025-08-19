@@ -403,8 +403,8 @@ UniversalChessInterface::getCommand(const std::string& input)
 
 /**
  * @brief Validates a debug command, and returns the value
+ * ments should be treated as
  * 
- * If the return value is false, all output arguments should be treated as
  * undefined and ignored.
  * 
  * @param[in] input - The whole UCI string
