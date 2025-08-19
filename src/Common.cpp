@@ -49,6 +49,28 @@ Move::Move()
 {
 }
 
+std::string
+Move::toString() const
+{
+    std::string result;
+    result += static_cast<char>('a' + source_file - 1);
+    result += static_cast<char>('1' + source_rank - 1);
+    result += static_cast<char>('a' + destination_file - 1);
+    result += static_cast<char>('1' + destination_rank - 1);
+
+    if (promotion_chosen == Promotion::QUEEN) {
+        result += 'q';
+    } else if (promotion_chosen == Promotion::ROOK) {
+        result += 'r';
+    } else if (promotion_chosen == Promotion::BISHOP) {
+        result += 'b';
+    } else if (promotion_chosen == Promotion::KNIGHT) {
+        result += 'n';
+    }
+
+    return result;
+}
+
 bool debug_enabled = false;
 
 void debugLog(const char* format, ...)
@@ -58,6 +80,6 @@ void debugLog(const char* format, ...)
 
     va_list args;
     va_start(args, format);
-    vprintf(format, args);
+    vfprintf(stderr, format, args);
     va_end(args);
 }

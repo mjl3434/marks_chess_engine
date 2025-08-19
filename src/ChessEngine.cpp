@@ -17,7 +17,6 @@
 
 ChessEngine::ChessEngine()
 {
-    printf("Created new ChessEngine\n");
 }
 
 void
@@ -38,7 +37,7 @@ ChessEngine::stop() {
 void
 ChessEngine::spin()
 {
-    while (true) {
+    while (running) {
 
         // Block until a command is available
         std::unique_ptr<UCICommand> command = command_queue.dequeue();
@@ -102,6 +101,10 @@ ChessEngine::doPonderHitCommand(PonderHitCommand& command)
 void
 ChessEngine::doPositionCommand(PositionCommand& command)
 {
+    // Create a new game if one doesn't already exist (from ucinewgame)
+    if (_game == nullptr) {
+        _game = std::make_unique<ChessGame>();
+    }
     _game->_game_state.push_back(GameState()); // Start with a fresh game state
 
     setUpBoardFromFen(command.fen, _game->_game_state.back());
@@ -116,7 +119,7 @@ ChessEngine::doPositionCommand(PositionCommand& command)
 void
 ChessEngine::doQuitCommand(QuitCommand& command)
 {
-    // Clean up the engine
+    running = false; // We check this in ChessEngine::spin()
 }
 
 void
@@ -141,8 +144,42 @@ ChessEngine::doStopCommand(StopCommand& command)
 void
 ChessEngine::doUciCommand(UciCommand& command)
 {
-    std::cout << "id Name " << engine_name << "\n";
-    std::cout << "id Author " << author << "\n";
+    std::cout << "id name " << engine_name << "\n";
+    std::cout << "id author " << author << "\n";
+
+    /*
+Arena 3.10beta
+
+2025-08-18 23:58:50.189**Fast graphics mode ok
+2025-08-18 23:58:50.709**----------New game---2025-08-18 23:58:50,709 Mon -------------
+2025-08-18 23:58:51.014**Arena Start took: 1611 ms
+2025-08-18 23:58:51.930**Loading  1
+2025-08-18 23:59:17.531**----------New game---2025-08-18 23:59:17,531 Mon -------------
+2025-08-18 23:59:25.523*1*--------------------Starting engine 1 Marks_chess_engine--------------------
+2025-08-18 23:59:25.529*1*Configured Engine 1 Type:   UCI
+2025-08-18 23:59:25.529*1*enginedebug:CommandLine: >>nice -1 /home/mark/git/marks_chess_engine/build/marks_chess_engine <<
+2025-08-18 23:59:25.529*1*enginedebug:-- executing engine--
+2025-08-18 23:59:25.533*1*enginedebug:EngineReadThread create...
+2025-08-18 23:59:25.533*1*enginedebug:EngineReadThread created suspended
+2025-08-18 23:59:25.533*1*enginedebug:-- Thread now starting --
+2025-08-18 23:59:25.533*1*enginedebug:-- Tengine.Redirect finished --
+2025-08-18 23:59:25.554<--1:-- starting engine[slotnr].EngineProcess --
+2025-08-18 23:59:25.557<--1:-- engine[slotnr].EngineProcess.Running --
+2025-08-18 23:59:25.560-->1:uci
+2025-08-18 23:59:33.561-->1:isready
+2025-08-18 23:59:33.597<--1:id name Mark's Chess Engine Version 1.0
+2025-08-18 23:59:33.597<--1:id author Mark Larwill
+2025-08-18 23:59:33.597<--1:uciok
+2025-08-18 23:59:53.809*1*Start calc, move no: 1
+2025-08-18 23:59:53.810-->1:ucinewgame
+2025-08-18 23:59:53.810-->1:isready
+2025-08-18 23:59:53.811<--1:readyok
+2025-08-18 23:59:53.817-->1:position startpos moves e2e4
+2025-08-18 23:59:53.817-->1:go wtime 300000 btime 300000 winc 0 binc 0
+2025-08-18 23:59:53.817<--1:Started new game!
+2025-08-18 23:59:53.818<--1:readyok
+
+    */
 
     /*
   1 <Stockfish(0): info string Using 8 threads
@@ -179,8 +216,6 @@ ChessEngine::doUciCommand(UciCommand& command)
 void
 ChessEngine::doUciNewGameCommand(UciNewGameCommand& command)
 {
-    printf("Started new game!\n");
-
     // Clear any internal state left over from a previous game
     _game.reset();
 
@@ -226,6 +261,13 @@ ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_c
     }
 
     return result;
+}
+
+void
+ChessEngine::printBestMove(const SearchResult& result) const
+{
+    std::cout << "bestmove " << result.best_move.toString() << "\n";
+    std::cout.flush();
 }
 
 int32_t

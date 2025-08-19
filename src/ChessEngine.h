@@ -47,6 +47,7 @@ private:
 
     // Main implementation functions
     SearchResult findBestMove(const GameState& game_state, const GoCommand& go_command) const;
+    void printBestMove(const SearchResult& result) const;
     int32_t minimax(GameState game_state, position_hash_t& repetition_table,
             int depth, int alpha,int beta, bool maximizing) const;
     int32_t evaluatePosition(const GameState& game_state, position_hash_t& repetition_table) const;
@@ -57,6 +58,7 @@ private:
     void printSupportedOptions(void) const;
 
     // Private data
+    bool running = true;
     bool _debug_enabled = false;
     std::string engine_name = "Mark's Chess Engine Version 1.0";
     std::string author = "Mark Larwill";

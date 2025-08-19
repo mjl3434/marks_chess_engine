@@ -61,6 +61,8 @@ struct Move
 public:
     Move(std::string algebraic_notation);
     Move();
+    std::string toString() const;
+
     int8_t source_rank; // (row)
     int8_t source_file; // (column)
     int8_t destination_rank; // (row)
