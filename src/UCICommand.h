@@ -13,6 +13,7 @@ public:
     UCICommand() = default;
     virtual ~UCICommand() = default;
     virtual void doCommand(ChessEngine& engine) = 0;
+    virtual bool isQuickCommand() const = 0;
 protected:
     std::list<std::string> command_as_tokens;
 };
@@ -23,6 +24,7 @@ public:
         : UCICommand(tokens)
     {}
     void doCommand(ChessEngine& engine) override;
+    bool isQuickCommand() const override { return true; }
     bool debug_enabled = false;
 };
 
@@ -32,6 +34,7 @@ public:
         : UCICommand(tokens)
     {}
     void doCommand(ChessEngine& engine) override;
+    bool isQuickCommand() const override { return true; }
 };
 
 class IsReadyCommand : public UCICommand {
@@ -40,6 +43,7 @@ public:
         : UCICommand(tokens) 
     {}
     void doCommand(ChessEngine& engine) override;
+    bool isQuickCommand() const override { return true; }
 };
 
 class UciNewGameCommand : public UCICommand {
@@ -48,6 +52,7 @@ public:
         : UCICommand(tokens) 
     {}
     void doCommand(ChessEngine& engine) override;
+    bool isQuickCommand() const override { return true; }
 };
 
 class SetOptionCommand : public UCICommand {
@@ -56,6 +61,7 @@ public:
         : UCICommand(tokens) 
     {}
     void doCommand(ChessEngine& engine) override;
+    bool isQuickCommand() const override { return true; }
     std::string name;
     std::string value;
 };
@@ -66,6 +72,9 @@ public:
         : UCICommand(tokens) 
     {}
     void doCommand(ChessEngine& engine) override;
+    // If there are cases in the future where this can be received while
+    // calculating then it may make sense to make this a quick command.
+    bool isQuickCommand() const override { return false; }
     std::string fen;
     std::list<Move> moves;
 };
@@ -76,6 +85,7 @@ public:
         : UCICommand(tokens) 
     {}
     void doCommand(ChessEngine& engine) override;
+    bool isQuickCommand() const override { return false; }
     std::list<Move> search_moves;   // Restrict search to these moves
     bool ponder = false;            // Enter ponder mode
     bool infinite = false;          // No time limit, search until "stop" command
@@ -97,6 +107,7 @@ public:
         : UCICommand(tokens) 
     {}
     void doCommand(ChessEngine& engine) override;
+    bool isQuickCommand() const override { return true; }
 };
 
 class PonderHitCommand : public UCICommand {
@@ -105,6 +116,7 @@ public:
         : UCICommand(tokens) 
     {}
     void doCommand(ChessEngine& engine) override;
+    bool isQuickCommand() const override { return false; } // FIXME: Is this long or short?
 };
 
 class QuitCommand : public UCICommand {
@@ -116,4 +128,5 @@ public:
         : UCICommand() 
     {}
     void doCommand(ChessEngine& engine) override;
+    bool isQuickCommand() const override { return true; }
 };

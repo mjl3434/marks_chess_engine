@@ -25,7 +25,7 @@ undoMove() just pops the stack
 No complex undo logic needed
 
 Let each class do one thing well
-For Minimax Search
+For minmax Search
 This design is perfect for search because:
 
 Copy GameState before making a move

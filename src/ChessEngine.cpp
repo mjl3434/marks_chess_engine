@@ -5,6 +5,7 @@
 #include <iostream>
 #include <list>
 #include <random>
+#include <queue>
 #include <regex>
 #include <sstream>
 #include <unordered_set>
@@ -76,11 +77,13 @@ ChessEngine::doGoCommand(GoCommand& command)
     const GameState& game_state = _game->getLatestGameState();
 
     SearchResult result = findBestMove(game_state, command);
-    debugLog("Best move found! score = %d, depth_searched = %d, nodes_searched = %d\n"
-             "move start = [%d,%d] end = [%d,%d]\n",
-             result.score, result.depth_searched, result.nodes_searched,
-             result.best_move.source_rank, result.best_move.source_file,
-             result.best_move.destination_rank, result.best_move.destination_file);
+    printBestMove(result);
+
+    //debugLog("Best move found! score = %d, depth_searched = %d, nodes_searched = %d\n"
+    //         "move start = [%d,%d] end = [%d,%d]\n",
+    //         result.score, result.depth_searched, result.nodes_searched,
+    //         result.best_move.source_rank, result.best_move.source_file,
+    //         result.best_move.destination_rank, result.best_move.destination_file);
 }
 
 void
@@ -224,7 +227,7 @@ ChessEngine::doUciNewGameCommand(UciNewGameCommand& command)
 }
 
 SearchResult
-ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_command) const
+ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_command)
 {
     SearchResult result;
     result.score = INT32_MIN;
@@ -235,6 +238,8 @@ ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_c
 
     int i = 1;
     for (const Move& move : legal_moves) {
+
+        handleAnyQuickCommands();
 
         // Temporarily make the move on a copy
         debugLog("%s Trying legal move number %d\n", __FUNCTION__, i++);
@@ -248,7 +253,7 @@ ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_c
 
         // Search deeper with alpha-beta
         debugLog("%s Starting minmax\n", __FUNCTION__);
-        int32_t score = minimax(search_state, repetition_table, max_depth - 1, INT32_MIN, INT32_MAX, false);
+        int32_t score = minmax(search_state, repetition_table, max_depth - 1, INT32_MIN, INT32_MAX, false);
 
         // Remove the position from the repetition table (backtrack)
         debugLog("%s Removing position from repetition talbe\n", __FUNCTION__);
@@ -271,8 +276,8 @@ ChessEngine::printBestMove(const SearchResult& result) const
 }
 
 int32_t
-ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
-    int depth, int alpha, int beta, bool maximizing) const
+ChessEngine::minmax(GameState game_state, position_hash_t& repetition_table,
+    int depth, int alpha, int beta, bool maximizing)
 {
     Rules& rules = _game->_rules;
 
@@ -303,6 +308,8 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
         int32_t max_score = INT32_MIN;
         for (const Move& move : moves) {
 
+            handleAnyQuickCommands(); 
+
             debugLog("%s: Maximizing trying move\n", __FUNCTION__);
             // Temporarily make the move on a copy 
             GameState new_state = game_state;
@@ -313,7 +320,7 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
 
             // Keep recursing
             debugLog("%s: Maximiaing recursing depth = %d\n", __FUNCTION__, depth);
-            int score = minimax(new_state, repetition_table, depth - 1, alpha, beta, false);
+            int score = minmax(new_state, repetition_table, depth - 1, alpha, beta, false);
 
             // Remove the position from the repetition table (backtrack)
             _game->removeFromRepetitionTable(new_state._game_state_hash, repetition_table);
@@ -340,7 +347,7 @@ ChessEngine::minimax(GameState game_state, position_hash_t& repetition_table,
 
             // Keep recursing
             debugLog("%s: Minimizing recursing depth = %d\n", __FUNCTION__, depth);
-            int score = minimax(new_state, repetition_table, depth - 1, alpha, beta, true);
+            int score = minmax(new_state, repetition_table, depth - 1, alpha, beta, true);
 
             // Remove the position from the repetition table (backtrack)
             _game->removeFromRepetitionTable(new_state._game_state_hash, repetition_table);
@@ -630,9 +637,53 @@ ChessEngine::setUpBoardFromFen(const std::string& fen, GameState& game_state) co
 }
 
 void
-ChessEngine::printSupportedOptions(void) const
+ChessEngine::printSupportedOptions() const
 {
     // Once we support options we should print them here
     // option name Foo FooValue1 FooValue2 ...
     // option name Bar BarValue1 Baralue2 ...
 }
+
+/*
+ * @brief Handles any quick commands that may have been added to the command queue
+ * This method is called periodically in long-running functions to ensure that
+ * the UCI chess engine remains responsive. It locks the entire queue, dequeues
+ * each command, and adds them to one of two lists: A list of quick commands that
+ * will be run immediatly, or a list of long-running commands that will be
+ * re-enqueued just before the lock is released.
+ */
+void
+ChessEngine::handleAnyQuickCommands()
+{
+    // Temporary queue for long-running commands
+    std::queue<std::unique_ptr<UCICommand>> long_commands;
+
+    // Lock the command queue for this entire scope
+    {
+        std::lock_guard<std::mutex> lock(command_queue._mutex);
+
+        while (true) {
+            auto optional_command = command_queue.try_dequeue();
+            if (optional_command.has_value()) {
+                if (optional_command->get()->isQuickCommand()) {
+                    // This is a quick command, run it immediately
+                    optional_command->get()->doCommand(*this);
+                } else {
+                    // This is a long-running command, add it to the queue
+                    long_commands.push(std::move(optional_command.value()));
+                }
+            } else {
+                break;
+            }
+        }
+
+        // Re-enqueue any long-running commands
+        while (!long_commands.empty()) {
+            command_queue.enqueue(std::move(long_commands.front()));
+            long_commands.pop();
+        }
+    }
+}
+
+
+

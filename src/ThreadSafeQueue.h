@@ -35,7 +35,8 @@ public:
 
     // Non-blocking dequeue (so you can periodically check while busy doing other work)
     std::optional<T> try_dequeue() {
-        std::lock_guard<std::mutex> lock(_mutex);
+        // NOTE: You must lock the mutex before calling this method
+        //std::lock_guard<std::mutex> lock(_mutex);
         if (_queue.empty()) return std::nullopt;
 
         T item = std::move(_queue.front());
@@ -48,8 +49,9 @@ public:
         return _queue.empty();
     }
 
-private:
     mutable std::mutex _mutex;
+
+private:
     std::condition_variable _cond;
     std::queue<T> _queue;
 };
