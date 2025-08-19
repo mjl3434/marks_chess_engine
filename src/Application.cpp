@@ -1,5 +1,6 @@
 #include "Application.h"
 
+#include <csignal>
 #include <functional>
 #include <iostream>
 #include <memory>
@@ -10,6 +11,11 @@
 
 // Global to be shared between threads
 ThreadSafeQueue<std::unique_ptr<UCICommand>> command_queue;
+
+void handle_sigint(int)
+{
+    fclose(stdin); // This will cause std::getline to fail and return false
+}
 
 Application::Application()
     : _chess_engine(),
@@ -23,11 +29,17 @@ Application::~Application()
 
 void Application::run()
 {
+    std::signal(SIGINT, handle_sigint);
+
     _chess_engine.start();
 
     std::string input;
     while (true) {
-        std::getline(std::cin, input);
+        // Most likely quit from ctrl-c, or can't read from stdin for some reason
+        if (!std::getline(std::cin, input)) {
+            break;
+        }
+        // The user typed "quit"
         if (_uci.quitReceived(input)) {
             break;
         }
