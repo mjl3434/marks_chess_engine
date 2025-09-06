@@ -1,0 +1,21 @@
+#!/bin/bash
+
+if [ "$1" = "--help" ]; then
+    echo "Usage: $0 --clean # Do a full clean and build"
+    echo "       $0         # Do an incrmental build"
+    echo "       $0 --help  # Print this message"
+    exit 0
+fi
+
+
+if [ "$1"  = "--clean" ]; then
+    rm -rf build/
+    echo "Build directory cleaned."
+fi
+
+mkdir -p build
+cd build
+echo "Running cmake in build directory."
+cmake ..
+echo "Running make in the build directory."
+make
