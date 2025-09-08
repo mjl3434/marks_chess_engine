@@ -564,6 +564,8 @@ bool
 Rules::isSquareUnderAttackByRookOrQueen(int8_t rank, int8_t file, const GameState& state,
         Player opponent) const
 {
+
+
     Piece opposing_rook, opposing_queen;
     if (opponent == Player::BLACK) {
         opposing_rook = Piece::BLACK_ROOK;
@@ -577,9 +579,13 @@ Rules::isSquareUnderAttackByRookOrQueen(int8_t rank, int8_t file, const GameStat
     for (int8_t f = file + 1; f <= 8; f++) {
         Piece piece = state.board[rank-1][f-1].piece;
         if (piece == opposing_rook || piece == opposing_queen) {
+debugLog("%s: rank=%d, file=%d is under attack by %s in +x direction\n",
+    __func__, rank, file, opponent == Player::WHITE ? "WHITE" : "BLACK");
             return true;
         }
         if (piece != Piece::EMPTY) {
+debugLog("%s: rank=%d, file=%d is blocked by %s in +x direction\n",
+    __func__, rank, file, opponent == Player::WHITE ? "BLACK" : "WHITE");
             break; // Path blocked
         }
     }
@@ -1007,6 +1013,11 @@ Rules::generateLegalMovesForPieceAt(uint8_t rank, uint8_t file, const GameState&
         // Check if the move is legal
         if (isLegalMove(move, game_state)) {
             legal_moves_for_piece.push_back(move);
+        }
+         else {
+            debugLog("%s: move from %d,%d to %d,%d is not legal\n",
+                __func__, move.source_rank, move.source_file,
+                move.destination_rank, move.destination_file);
         }
     }
 

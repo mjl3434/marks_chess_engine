@@ -281,6 +281,7 @@ ChessEngine::minmax(GameState game_state, position_hash_t& repetition_table,
 {
     Rules& rules = _game->_rules;
 
+    debugLog("%s: Entering depth = %d, maximizing = %s\n", __FUNCTION__, depth, maximizing ? "true" : "false");
     debugLog("%s: About to check for game endings\n", __FUNCTION__);
     GameResult result = rules.checkForGameEndings(game_state, repetition_table);
 
@@ -301,7 +302,7 @@ ChessEngine::minmax(GameState game_state, position_hash_t& repetition_table,
         return evaluatePosition(game_state, repetition_table);
     }
 
-    debugLog("%s: Getting a big list of legal moves\n", __FUNCTION__);
+    debugLog("%s: Getting a big list of legal moves at depth %d\n", __FUNCTION__, depth);
     std::list<Move> moves = _game->_rules.generateLegalMovesForCurrentPlayer(game_state);
 
     if (maximizing) {
@@ -373,12 +374,11 @@ ChessEngine::minmax(GameState game_state, position_hash_t& repetition_table,
 int32_t
 ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repetition_table) const
 {
-    // 
     // Generate a random number between INT32_MIN and INT32_MAX
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-    static std::uniform_int_distribution<int32_t> dist(INT32_MIN, INT32_MAX);
-    return dist(gen);
+    //static std::random_device rd;
+    //static std::mt19937 gen(rd());
+    //static std::uniform_int_distribution<int32_t> dist(INT32_MIN, INT32_MAX);
+    //return dist(gen);
 
     int32_t result = 0;
 
@@ -405,10 +405,10 @@ ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repe
     // The math here is generally based on the concept of counting the material
     // remaining on the board and assigning a score based on that. However since
     // we also want to account for positional advantages, we also need to take
-    // into consideration several other variable and give them a score. A pinned
-    // queen for example would not be as valuable as a queen that can move
-    // freely. Likewise, a bishop that's defended and attacking several squares
-    // is more valuable than a bishop that's blocked by its own pawns.
+    // into consideration several other variables and give them a score. A
+    // pinned queen for example would not be as valuable as a queen that can
+    // move freely. Likewise, a bishop that's defended and attacking several
+    // squares is more valuable than a bishop that's blocked by its own pawns.
 
     // In order to account for the nuances of position and take advantage for
     // the large range from INT32_MIN to INT32_MAX, which covers from approx.
