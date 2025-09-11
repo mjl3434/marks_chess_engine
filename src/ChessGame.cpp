@@ -26,6 +26,22 @@ ChessGame::doMove(const Move& move)
     new_game_state.board[new_move.destination_rank-1][new_move.destination_file-1].piece = new_move.piece;
     new_game_state.board[new_move.source_rank-1][new_move.source_file-1].piece = Piece::EMPTY;
 
+    // Handle castling - need to move the rook too
+    if (_rules.isKingSideCastle(new_move)) {
+        // Move rook from h1/h8 to f1/f8
+        int rank = (new_move.piece == Piece::WHITE_KING) ? 1 : 8;
+        Piece rook = (new_move.piece == Piece::WHITE_KING) ? Piece::WHITE_ROOK : Piece::BLACK_ROOK;
+        new_game_state.board[rank-1][7-1].piece = Piece::EMPTY;      // Clear h1/h8
+        new_game_state.board[rank-1][6-1].piece = rook;             // Place rook on f1/f8
+    }
+    else if (_rules.isQueenSideCastle(new_move)) {
+        // Move rook from a1/a8 to d1/d8
+        int rank = (new_move.piece == Piece::WHITE_KING) ? 1 : 8;
+        Piece rook = (new_move.piece == Piece::WHITE_KING) ? Piece::WHITE_ROOK : Piece::BLACK_ROOK;
+        new_game_state.board[rank-1][0].piece = Piece::EMPTY;       // Clear a1/a8
+        new_game_state.board[rank-1][3-1].piece = rook;            // Place rook on d1/d8
+    }
+
     // Update the game state as a result of the move
     new_game_state.updateGameState(new_move);
 
@@ -62,6 +78,22 @@ ChessGame::tryMoveOnStateCopy(const Move& move, GameState& game_state) const
     // Make the move on the game board
     game_state.board[move.destination_rank-1][move.destination_file-1].piece = pice_moved;
     game_state.board[move.source_rank-1][move.source_file-1].piece = Piece::EMPTY;
+
+    // Handle castling - need to move the rook too
+    if (_rules.isKingSideCastle(move)) {
+        // Move rook from h1/h8 to f1/f8
+        int rank = (pice_moved == Piece::WHITE_KING) ? 1 : 8;
+        Piece rook = (pice_moved == Piece::WHITE_KING) ? Piece::WHITE_ROOK : Piece::BLACK_ROOK;
+        game_state.board[rank-1][7-1].piece = Piece::EMPTY;      // Clear h1/h8
+        game_state.board[rank-1][6-1].piece = rook;             // Place rook on f1/f8
+    }
+    else if (_rules.isQueenSideCastle(move)) {
+        // Move rook from a1/a8 to d1/d8
+        int rank = (pice_moved == Piece::WHITE_KING) ? 1 : 8;
+        Piece rook = (pice_moved == Piece::WHITE_KING) ? Piece::WHITE_ROOK : Piece::BLACK_ROOK;
+        game_state.board[rank-1][0].piece = Piece::EMPTY;       // Clear a1/a8
+        game_state.board[rank-1][3-1].piece = rook;            // Place rook on d1/d8
+    }
 
     // Update the game state as a result of the move
     game_state.updateGameState(move);

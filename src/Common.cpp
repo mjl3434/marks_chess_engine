@@ -1,5 +1,80 @@
 #include "Common.h"
 
+// DEBUG FUNCTIONS
+#if 0
+#include <iostream>
+#include <iomanip>
+
+const char* printPiece(const Piece& piece)
+{
+    switch (piece)
+    {
+        case Piece::EMPTY:
+            return "empty";
+        case Piece::WHITE_PAWN:
+            return "white pawn";
+        case Piece::WHITE_BISHOP:
+            return "white bishop";
+        case Piece::WHITE_KNIGHT:
+            return "white knight";
+        case Piece::WHITE_ROOK:
+            return "white rook";
+        case Piece::WHITE_QUEEN:
+            return "white queen";
+        case Piece::WHITE_KING:
+            return "white king";
+        case Piece::BLACK_PAWN:
+            return "black pawn";
+        case Piece::BLACK_BISHOP:
+            return "black bishop";
+        case Piece::BLACK_KNIGHT:
+            return "black knight";
+        case Piece::BLACK_ROOK:
+            return "black rook";
+        case Piece::BLACK_QUEEN:
+            return "black queen";
+        case Piece::BLACK_KING:
+            return "black king";
+        default:
+            return "unknown piece";
+    }
+}
+
+// Helper function to print the board state
+void printBoard(const GameState& state) {
+    // Piece to char mapping
+    auto pieceToChar = [](Piece p) -> char {
+        switch (p) {
+            case Piece::WHITE_PAWN:   return 'P';
+            case Piece::WHITE_KNIGHT: return 'N';
+            case Piece::WHITE_BISHOP: return 'B';
+            case Piece::WHITE_ROOK:   return 'R';
+            case Piece::WHITE_QUEEN:  return 'Q';
+            case Piece::WHITE_KING:   return 'K';
+            case Piece::BLACK_PAWN:   return 'p';
+            case Piece::BLACK_KNIGHT: return 'n';
+            case Piece::BLACK_BISHOP: return 'b';
+            case Piece::BLACK_ROOK:   return 'r';
+            case Piece::BLACK_QUEEN:  return 'q';
+            case Piece::BLACK_KING:   return 'k';
+            case Piece::EMPTY:        return '.';
+            default:                  return '?';
+        }
+    };
+    std::cerr << "\n  a b c d e f g h\n";
+    for (int rank = 8; rank >= 1; --rank) {
+        std::cerr << rank << ' ';
+        for (int file = 1; file <= 8; ++file) {
+            char c = pieceToChar(state.board[rank-1][file-1].piece);
+            std::cerr << c << ' ';
+        }
+        std::cerr << rank << '\n';
+    }
+    std::cerr << "  a b c d e f g h\n";
+}
+#endif
+// DEBUG FUNCTIONS END
+
 /**
  * @brief Constructs a Move object from string of algebraic notation
  * Assumptions:

@@ -89,7 +89,7 @@ ChessEngine::doGoCommand(GoCommand& command)
 void
 ChessEngine::doIsReadyCommand(IsReadyCommand& command)
 {
-    std::cout << "readyok\n";
+    std::cout << "readyok" << std::endl;
 }
 
 void
@@ -130,7 +130,7 @@ ChessEngine::doSetOptionCommand(SetOptionCommand& command)
 {
     // Set the configuration option in the chess engine
     // For now we just print it out
-    std::cout << "Set option: " << command.name << " to " << command.value << "\n";
+    std::cout << "Set option: " << command.name << " to " << command.value << std::endl;
     // In a real implementation we would store this in a map or similar structure
     // and actually use it to configure the engine's behavior.
 }
@@ -147,8 +147,8 @@ ChessEngine::doStopCommand(StopCommand& command)
 void
 ChessEngine::doUciCommand(UciCommand& command)
 {
-    std::cout << "id name " << engine_name << "\n";
-    std::cout << "id author " << author << "\n";
+    std::cout << "id name " << engine_name << std::endl;
+    std::cout << "id author " << author << std::endl;
 
     /*
 Arena 3.10beta
@@ -213,7 +213,7 @@ Arena 3.10beta
     */
     printSupportedOptions();
 
-    std::cout << "uciok\n";
+    std::cout << "uciok" << std::endl;
 }
 
 void
@@ -271,8 +271,7 @@ ChessEngine::findBestMove(const GameState& starting_state, const GoCommand& go_c
 void
 ChessEngine::printBestMove(const SearchResult& result) const
 {
-    std::cout << "bestmove " << result.best_move.toString() << "\n";
-    std::cout.flush();
+    std::cout << "bestmove " << result.best_move.toString() << std::endl;
 }
 
 int32_t
@@ -282,10 +281,10 @@ ChessEngine::minmax(GameState game_state, position_hash_t& repetition_table,
     Rules& rules = _game->_rules;
 
     debugLog("%s: Entering depth = %d, maximizing = %s\n", __FUNCTION__, depth, maximizing ? "true" : "false");
-    debugLog("%s: About to check for game endings\n", __FUNCTION__);
     GameResult result = rules.checkForGameEndings(game_state, repetition_table);
 
     if (result == GameResult::CHECKMATE) {
+        debugLog("%s: Found a checkmate\n", __FUNCTION__);
         if (maximizing) {
             return INT32_MAX;   // Checkmate is the best score possible
         } else {
@@ -295,15 +294,16 @@ ChessEngine::minmax(GameState game_state, position_hash_t& repetition_table,
                result == GameResult::THREEFOLD ||
                result == GameResult::FIFTY_MOVE ||
                result == GameResult::INSUFFICIENT_MATERIAL) {
+        debugLog("%s: Found a draw\n", __FUNCTION__);
         return 0;   // Draw
-    } else if (result == GameResult::NONE || depth == 0) {
+    } else if (depth == 0) {
         // Search reached max depth
         debugLog("%s: About to evaluate max depth position\n", __FUNCTION__);
         return evaluatePosition(game_state, repetition_table);
     }
 
-    debugLog("%s: Getting a big list of legal moves at depth %d\n", __FUNCTION__, depth);
     std::list<Move> moves = _game->_rules.generateLegalMovesForCurrentPlayer(game_state);
+    debugLog("%s: At depth %d, found %d legal moves\n", __FUNCTION__, depth, moves.size());
 
     if (maximizing) {
         int32_t max_score = INT32_MIN;
@@ -311,7 +311,6 @@ ChessEngine::minmax(GameState game_state, position_hash_t& repetition_table,
 
             handleAnyQuickCommands(); 
 
-            debugLog("%s: Maximizing trying move\n", __FUNCTION__);
             // Temporarily make the move on a copy 
             GameState new_state = game_state;
             _game->tryMoveOnStateCopy(move, new_state);
@@ -338,7 +337,6 @@ ChessEngine::minmax(GameState game_state, position_hash_t& repetition_table,
         int32_t min_score = INT32_MAX;
         for (const Move& move : moves) {
 
-            debugLog("%s: Minimizing trying move\n", __FUNCTION__);
             // Temporarily make the move on a copy 
             GameState new_state = game_state;  // Copy
             _game->tryMoveOnStateCopy(move, new_state);

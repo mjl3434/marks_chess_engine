@@ -9,7 +9,7 @@
 #include "ChessGame.h"
 #include "UCICommand.h"
 
-#define DEFAULT_MAX_SEARCH_DEPTH 8
+#define DEFAULT_MAX_SEARCH_DEPTH 4
 
 // Note: Thrown together, this may have to change
 struct SearchResult {

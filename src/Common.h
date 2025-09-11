@@ -78,3 +78,7 @@ public:
 
 extern bool debug_enabled;
 void debugLog(const char* format, ...);
+
+// DEBUG FUNCTIONS
+//const char* printPiece(const Piece& piece);
+//void printBoard(const GameState& state);
