@@ -404,7 +404,7 @@ ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repe
     // remaining on the board and assigning a score based on that. However since
     // we also want to account for positional advantages, we also need to take
     // into consideration several other variables and give them a score. A
-    // pinned queen for example would not be as valuable as a queen that can
+    // pinned knight for example would not be as valuable as a knight that can
     // move freely. Likewise, a bishop that's defended and attacking several
     // squares is more valuable than a bishop that's blocked by its own pawns.
 
