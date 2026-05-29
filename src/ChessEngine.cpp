@@ -16,6 +16,40 @@
 #include "UCICommand.h"
 #include "Keyword.h"
 
+#include "Pvt.h"
+
+// ensure tables are initialized once
+namespace {
+    struct PvtTablesInit {
+        PvtTablesInit() { init_tables(); }
+    };
+    static PvtTablesInit _pvt_tables_init; // runs init_tables() at program startup (before main returns)
+}
+
+// helper: map your Piece enum to Pvt piece constants
+static int pieceToPvt(const Piece& p)
+{
+    switch (p)
+    {
+        case Piece::WHITE_PAWN:   return PVT_WHITE_PAWN;
+        case Piece::BLACK_PAWN:   return PVT_BLACK_PAWN;
+        case Piece::WHITE_KNIGHT: return PVT_WHITE_KNIGHT;
+        case Piece::BLACK_KNIGHT: return PVT_BLACK_KNIGHT;
+        case Piece::WHITE_BISHOP: return PVT_WHITE_BISHOP;
+        case Piece::BLACK_BISHOP: return PVT_BLACK_BISHOP;
+        case Piece::WHITE_ROOK:   return PVT_WHITE_ROOK;
+        case Piece::BLACK_ROOK:   return PVT_BLACK_ROOK;
+        case Piece::WHITE_QUEEN:  return PVT_WHITE_QUEEN;
+        case Piece::BLACK_QUEEN:  return PVT_BLACK_QUEEN;
+        case Piece::WHITE_KING:   return PVT_WHITE_KING;
+        case Piece::BLACK_KING:   return PVT_BLACK_KING;
+        case Piece::EMPTY:        return PVT_EMPTY;
+        default:
+            return PVT_EMPTY;
+    }
+}
+
+
 ChessEngine::ChessEngine()
 {
 }
@@ -378,6 +412,7 @@ ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repe
     //static std::uniform_int_distribution<int32_t> dist(INT32_MIN, INT32_MAX);
     //return dist(gen);
 
+    /*
     int32_t result = 0;
 
     // Simple logic for now just calculate the material score of each player
@@ -398,6 +433,7 @@ ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repe
     }
 
     return result * 1000000; // Normalize the score to a larger range
+    */
 
 
     // The math here is generally based on the concept of counting the material
@@ -427,12 +463,36 @@ ChessEngine::evaluatePosition(const GameState& game_state, position_hash_t& repe
 
     // For each piece determine:
     // - Is it defended, and by how many pieces?
-    // - How many squares can it attack?
+    // - Is it truly defended (i.e. the defendors themselves are not defending something else, and are not under attack)?
+    // - How many squares can it move to / attack?
     // - Is it pinned?
     // - Is it blocked by its own pieces?
-    // - If it's a knight, is it on the edge of the board?
+    // - If it's a knight, is it on the edge of the board, or near the center?
     // - If it's a bishop, is it on a long diagonal?
 
+    // For the player's king measure how safe it is
+    // - Is it in check?
+    // - Are there escape squares available?
+    // - Are there pieces defending the squares nearby?
+
+    // Build the 64-square board[] that Pvt expects (a1=0 .. h8=63)
+    // NOTE: adapt the access below to your GameState layout if your board storage differs.
+    // The common layout used here: game_state.board[rank][file] with rank 0 == rank1 (a1..h1)
+    for (int sq = 0; sq < 64; ++sq) {
+        int rank = sq / 8;
+        int file = sq % 8;
+        Piece piece = game_state.board[rank][file].piece;
+        ::board[sq] = pieceToPvt(piece);
+    }
+
+    // Set side2move from GameState._current_player (Player::WHITE / Player::BLACK)
+    side2move = (game_state._current_player == Player::WHITE) ? PVT_WHITE : PVT_BLACK;
+
+    // PeSTO eval returns a score positive for side2move. Convert to engine convention:
+    // this engine expects positive == White winning.
+    int raw = eval();
+    int score_for_white = (side2move == PVT_WHITE) ? raw : -raw;
+    return score_for_white;
 }
 
 int32_t

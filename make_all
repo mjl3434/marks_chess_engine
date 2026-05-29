@@ -8,14 +8,28 @@ if [ "$1" = "--help" ]; then
 fi
 
 
-if [ "$1"  = "--clean" ]; then
-    rm -rf build/
+#if [ "$1"  = "--clean" ]; then
+#    rm -rf build/
+#    echo "Build directory cleaned."
+#fi
+#
+#mkdir -p build
+#cd build
+#echo "Running cmake in build directory."
+#cmake ..
+#echo "Running make in the build directory."
+#make
+
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
+BUILD_DIR="$ROOT_DIR/build"
+
+if [ "${1:-}" = "--clean" ]; then
+    rm -rf "$BUILD_DIR"
     echo "Build directory cleaned."
 fi
 
-mkdir -p build
-cd build
-echo "Running cmake in build directory."
-cmake ..
-echo "Running make in the build directory."
-make
+mkdir -p "$BUILD_DIR"
+echo "Running cmake (source: $ROOT_DIR, build: $BUILD_DIR)."
+cmake -S "$ROOT_DIR" -B "$BUILD_DIR"
+echo "Building..."
+cmake --build "$BUILD_DIR" -- -j$(nproc)
